@@ -51,6 +51,27 @@ class Statistics:
         return baseline_time / target_time
 
     @staticmethod
+    def calculate_scalability(
+        single_thread_throughput: float,
+        multi_thread_throughput: float
+    ) -> float:
+        """スケーラビリティを計算（シングルスレッドに対する倍率）
+        
+        Args:
+            single_thread_throughput: シングルスレッドのスループット
+            multi_thread_throughput: マルチスレッドのスループット
+            
+        Returns:
+            float: スケーラビリティ（multi_thread_throughput / single_thread_throughput）
+        """
+        if single_thread_throughput <= 0:
+            raise ValueError("single_thread_throughput must be positive")
+        if multi_thread_throughput <= 0:
+            raise ValueError("multi_thread_throughput must be positive")
+        
+        return multi_thread_throughput / single_thread_throughput
+
+    @staticmethod
     def calculate_relative_error(a: float, b: float) -> float:
         """2つの数値の相対誤差を計算
         

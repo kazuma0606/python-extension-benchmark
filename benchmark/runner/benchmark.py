@@ -94,12 +94,16 @@ class BenchmarkRunner:
                     timestamp=datetime.now(),
                     environment=self.environment,
                     status="ERROR",
-                    error_message=error_log.error_message
+                    error_message=error_log.error_message,
+                    thread_count=getattr(scenario, 'num_threads', None)
                 )
                 results.append(error_result)
         
         # Pure Python実装をベースラインとして相対スコアを計算
         self._calculate_relative_scores(results)
+        
+        # 並列処理シナリオの場合、スケーラビリティを計算
+        self._calculate_scalability(results)
         
         return results
     
@@ -145,6 +149,11 @@ class BenchmarkRunner:
         # スループットを計算（ops/sec）
         throughput = 1000.0 / time_stats.mean if time_stats.mean > 0 else 0.0
         
+        # 並列処理シナリオの場合、スレッド数を記録
+        thread_count = None
+        if hasattr(scenario, 'num_threads'):
+            thread_count = scenario.num_threads
+        
         return BenchmarkResult(
             scenario_name=scenario.name,
             implementation_name=implementation.name,
@@ -158,9 +167,43 @@ class BenchmarkRunner:
             throughput=throughput,
             output_value=output_value,
             timestamp=datetime.now(),
-            environment=self.environment
+            environment=self.environment,
+            thread_count=thread_count
         )
     
+    def _calculate_scalability(self, results: List[BenchmarkResult]) -> None:
+        """並列処理結果のスケーラビリティを計算
+        
+        Args:
+            results: 計測結果のリスト（in-placeで更新）
+        """
+        # 実装ごとにグループ化
+        by_implementation = {}
+        for result in results:
+            if result.thread_count is not None and result.status == "SUCCESS":
+                if result.implementation_name not in by_implementation:
+                    by_implementation[result.implementation_name] = {}
+                by_implementation[result.implementation_name][result.thread_count] = result
+        
+        # 各実装のスケーラビリティを計算
+        for impl_name, thread_results in by_implementation.items():
+            # シングルスレッド（thread_count=1）の結果を取得
+            single_thread_result = thread_results.get(1)
+            if single_thread_result is None:
+                continue
+            
+            single_thread_throughput = single_thread_result.throughput
+            if single_thread_throughput <= 0:
+                continue
+            
+            # 各スレッド数のスケーラビリティを計算
+            for thread_count, result in thread_results.items():
+                if result.throughput > 0:
+                    result.scalability = Statistics.calculate_scalability(
+                        single_thread_throughput,
+                        result.throughput
+                    )
+
     def _calculate_relative_scores(self, results: List[BenchmarkResult]) -> None:
         """相対スコアを計算（Pure Pythonをベースライン）
         
@@ -212,9 +255,12 @@ class BenchmarkRunner:
                 NumericScenario("matrix"),
                 MemoryScenario("sort"),
                 MemoryScenario("filter"),
+                # 並列処理シナリオ: スレッド数1、2、4、8、16で計測
                 ParallelScenario(1),
                 ParallelScenario(2),
                 ParallelScenario(4),
+                ParallelScenario(8),
+                ParallelScenario(16),
             ]
         
         all_results = []
@@ -222,6 +268,9 @@ class BenchmarkRunner:
             print(f"\nRunning scenario: {scenario.name}")
             results = self.run_scenario(scenario, implementations)
             all_results.extend(results)
+        
+        # 全結果に対してスケーラビリティを計算
+        self._calculate_scalability(all_results)
         
         # エラーサマリーを出力
         if self.error_handler.has_errors():

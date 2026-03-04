@@ -55,6 +55,9 @@ class BenchmarkResult:
     validation: Optional[ValidationResult] = None
     status: str = "SUCCESS"       # SUCCESS or ERROR
     error_message: Optional[str] = None
+    # 並列処理用の追加フィールド
+    thread_count: Optional[int] = None  # 使用したスレッド数
+    scalability: Optional[float] = None  # スケーラビリティ（シングルスレッドに対する倍率）
 
     def to_dict(self) -> Dict[str, Any]:
         """辞書形式に変換"""
@@ -85,6 +88,8 @@ class BenchmarkResult:
             } if self.validation else None,
             'status': self.status,
             'error_message': self.error_message,
+            'thread_count': self.thread_count,
+            'scalability': self.scalability,
         }
 
     @classmethod
@@ -111,6 +116,8 @@ class BenchmarkResult:
             validation=validation,
             status=data.get('status', 'SUCCESS'),
             error_message=data.get('error_message'),
+            thread_count=data.get('thread_count'),
+            scalability=data.get('scalability'),
         )
 
 

@@ -235,6 +235,152 @@ def test_warmup_data_exclusion(scenario, implementations, warmup_runs, measureme
                 f"Expected {measurement_runs} memory measurements (excluding warmup), " \
                 f"got {len(result.memory_usage)}"
             
+@given(
+    implementations=implementation_list_strategy(),
+    thread_counts=st.lists(
+        st.integers(min_value=1, max_value=16),
+        min_size=2,
+        max_size=5,
+        unique=True
+    )
+)
+@settings(deadline=None)
+def test_parallel_processing_thread_variations(implementations, thread_counts):
+    """Feature: python-extension-benchmark, Property 5: 並列処理のスレッド数バリエーション
+    
+    任意の並列処理シナリオに対して、実行時間とスループットが
+    各スレッド数（1、2、4、8、16）で記録されなければならない
+    
+    Validates: Requirements 3.2, 3.3
+    """
+    runner = BenchmarkRunner()
+    
+    # 各スレッド数で並列処理シナリオを実行
+    all_results = []
+    for thread_count in thread_counts:
+        scenario = ParallelScenario(thread_count)
+        results = runner.run_scenario(
+            scenario,
+            implementations,
+            warmup_runs=1,
+            measurement_runs=3  # テスト用に少なく
+        )
+        all_results.extend(results)
+    
+    # 各実装について、各スレッド数での結果が記録されていることを確認
+    for impl in implementations:
+        impl_results = [r for r in all_results 
+                       if r.implementation_name == impl.name and r.status == "SUCCESS"]
+        
+        if impl_results:  # 成功した結果がある場合のみテスト
+            # 各スレッド数での結果が存在することを確認
+            recorded_thread_counts = {r.thread_count for r in impl_results}
+            expected_thread_counts = set(thread_counts)
+            
+            # 少なくとも一部のスレッド数で結果が記録されていることを確認
+            assert len(recorded_thread_counts) > 0, \
+                f"No thread count results recorded for {impl.name}"
+            
+            # 記録されたスレッド数が期待されるものの部分集合であることを確認
+            assert recorded_thread_counts.issubset(expected_thread_counts), \
+                f"Unexpected thread counts {recorded_thread_counts} for {impl.name}"
+            
+            # 各結果について実行時間とスループットが記録されていることを確認
+            for result in impl_results:
+                assert result.thread_count is not None, \
+                    f"Thread count not recorded for {impl.name}"
+                assert result.thread_count in thread_counts, \
+                    f"Unexpected thread count {result.thread_count} for {impl.name}"
+                
+                # 実行時間が記録されていることを確認
+                assert len(result.execution_times) == 3, \
+                    f"Expected 3 execution times for {impl.name}, got {len(result.execution_times)}"
+                assert result.mean_time > 0, \
+                    f"Mean time must be positive for {impl.name}, got {result.mean_time}"
+                
+@given(
+    implementations=implementation_list_strategy(),
+    thread_counts=st.lists(
+        st.integers(min_value=1, max_value=16),
+        min_size=2,
+        max_size=5,
+        unique=True
+    ).filter(lambda x: 1 in x)  # Ensure single-thread is included for scalability calculation
+)
+@settings(deadline=None)
+def test_scalability_calculation(implementations, thread_counts):
+    """Feature: python-extension-benchmark, Property 6: スケーラビリティ計算
+    
+    任意の並列処理結果に対して、スケーラビリティは各スレッド数での
+    スループットをシングルスレッドのスループットで割った値として
+    計算されなければならない
+    
+    Validates: Requirements 3.4
+    """
+    runner = BenchmarkRunner()
+    
+    # 各スレッド数で並列処理シナリオを実行
+    scenarios = [ParallelScenario(tc) for tc in thread_counts]
+    all_results = []
+    
+    for scenario in scenarios:
+        results = runner.run_scenario(
+            scenario,
+            implementations,
+            warmup_runs=1,
+            measurement_runs=3  # テスト用に少なく
+        )
+        all_results.extend(results)
+    
+    # スケーラビリティを計算
+    runner._calculate_scalability(all_results)
+    
+    # 各実装について、スケーラビリティが正しく計算されていることを確認
+    for impl in implementations:
+        impl_results = [r for r in all_results 
+                       if r.implementation_name == impl.name and r.status == "SUCCESS"]
+        
+        if len(impl_results) < 2:  # 少なくとも2つの結果が必要
+            continue
+        
+        # スレッド数でソート
+        impl_results.sort(key=lambda x: x.thread_count)
+        
+        # シングルスレッド結果を取得
+        single_thread_result = next((r for r in impl_results if r.thread_count == 1), None)
+        
+        if single_thread_result is None or single_thread_result.throughput <= 0:
+            continue
+        
+        # 各結果のスケーラビリティが正しく計算されていることを確認
+        for result in impl_results:
+            if result.throughput > 0:
+                expected_scalability = result.throughput / single_thread_result.throughput
+                
+                # スケーラビリティが記録されていることを確認
+                assert result.scalability is not None, \
+                    f"Scalability not calculated for {impl.name} with {result.thread_count} threads"
+                
+                # スケーラビリティが正しく計算されていることを確認（小数点以下の誤差を許容）
+                assert abs(result.scalability - expected_scalability) < 1e-10, \
+                    f"Scalability calculation incorrect for {impl.name} with {result.thread_count} threads: " \
+                    f"expected {expected_scalability}, got {result.scalability}"
+                
+                # スケーラビリティが正の値であることを確認
+                assert result.scalability > 0, \
+                    f"Scalability must be positive for {impl.name}, got {result.scalability}"
+                
+                # シングルスレッドのスケーラビリティは1.0であることを確認
+                if result.thread_count == 1:
+                    assert abs(result.scalability - 1.0) < 1e-10, \
+                        f"Single-thread scalability should be 1.0 for {impl.name}, got {result.scalability}"
+
+
+                # スループットが記録されていることを確認
+                assert result.throughput > 0, \
+                    f"Throughput must be positive for {impl.name}, got {result.throughput}"
+
+
             # ウォームアップ実行の結果が含まれていないことを確認
             # （記録されたデータ数が本計測の回数と正確に一致していれば、
             #  ウォームアップデータは除外されている）

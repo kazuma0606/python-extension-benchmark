@@ -348,19 +348,30 @@
   - parallel_compute()をC++で実装（std::thread使用）
   - _要件: 3.1_
 
-- [ ] 14. Rust拡張実装（PyO3）
-- [ ] 14.1 Rust数値計算モジュールの実装
+- [x] 14. Rust拡張実装（PyO3）
+
+
+
+
+
+- [x] 14.1 Rust数値計算モジュールの実装
+
+
   - find_primes()をRustで実装
   - matrix_multiply()をRustで実装
   - Cargo.tomlでビルド設定（PyO3使用）
   - _要件: 1.1, 1.2_
 
-- [ ] 14.2 Rustメモリ操作モジュールの実装
+- [x] 14.2 Rustメモリ操作モジュールの実装
+
+
   - sort_array()をRustで実装
   - filter_array()をRustで実装
   - _要件: 2.1, 2.2_
 
-- [ ] 14.3 Rust並列処理モジュールの実装
+- [x] 14.3 Rust並列処理モジュールの実装
+
+
   - parallel_compute()をRustで実装（rayon使用）
   - _要件: 3.1_
 

@@ -15,6 +15,7 @@ from benchmark.models import (
     Scenario
 )
 from benchmark.statistics import Statistics
+from benchmark.runner.error_handler import ErrorHandler
 
 
 class BenchmarkRunner:
@@ -23,6 +24,7 @@ class BenchmarkRunner:
     def __init__(self):
         """初期化"""
         self.environment = self._get_environment_info()
+        self.error_handler = ErrorHandler()
     
     def _get_environment_info(self) -> EnvironmentInfo:
         """実行環境情報を取得
@@ -71,6 +73,12 @@ class BenchmarkRunner:
                 results.append(result)
             except Exception as e:
                 # エラーが発生しても他の実装は継続
+                error_log = self.error_handler.handle_execution_error(
+                    implementation.name,
+                    scenario.name,
+                    e
+                )
+                
                 error_result = BenchmarkResult(
                     scenario_name=scenario.name,
                     implementation_name=implementation.name,
@@ -86,10 +94,9 @@ class BenchmarkRunner:
                     timestamp=datetime.now(),
                     environment=self.environment,
                     status="ERROR",
-                    error_message=str(e)
+                    error_message=error_log.error_message
                 )
                 results.append(error_result)
-                print(f"Error in {implementation.name}: {e}")
         
         # Pure Python実装をベースラインとして相対スコアを計算
         self._calculate_relative_scores(results)
@@ -216,4 +223,52 @@ class BenchmarkRunner:
             results = self.run_scenario(scenario, implementations)
             all_results.extend(results)
         
+        # エラーサマリーを出力
+        if self.error_handler.has_errors():
+            self.error_handler.print_error_summary()
+        
         return all_results
+    
+    def load_implementations(
+        self,
+        implementation_names: List[str]
+    ) -> List[Implementation]:
+        """実装モジュールを安全にロード
+        
+        Args:
+            implementation_names: ロードする実装名のリスト
+                例: ["python", "numpy_impl", "c_ext"]
+        
+        Returns:
+            List[Implementation]: 正常にロードされた実装のリスト
+        """
+        implementations = []
+        
+        language_map = {
+            "python": "Python",
+            "numpy_impl": "NumPy",
+            "c_ext": "C",
+            "cpp_ext": "C++",
+            "cython_ext": "Cython",
+            "rust_ext": "Rust",
+        }
+        
+        for name in implementation_names:
+            module_name = f"benchmark.{name}"
+            module = self.error_handler.safe_import_module(module_name, name)
+            
+            if module is not None:
+                language = language_map.get(name, "Unknown")
+                implementations.append(Implementation(
+                    name=name,
+                    module=module,
+                    language=language
+                ))
+        
+        if not implementations:
+            print("⚠️  Warning: No implementations were successfully loaded!")
+        else:
+            print(f"✓ Successfully loaded {len(implementations)} implementation(s): "
+                  f"{', '.join(impl.name for impl in implementations)}\n")
+        
+        return implementations

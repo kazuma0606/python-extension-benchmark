@@ -321,19 +321,30 @@
   - parallel_compute()をC言語で実装（pthreads使用）
   - _要件: 3.1_
 
-- [ ] 13. C++拡張実装（pybind11）
-- [ ] 13.1 C++数値計算モジュールの実装
+- [x] 13. C++拡張実装（pybind11）
+
+
+
+
+
+- [x] 13.1 C++数値計算モジュールの実装
+
+
   - find_primes()をC++で実装
   - matrix_multiply()をC++で実装
   - CMakeLists.txtでビルド設定（pybind11使用）
   - _要件: 1.1, 1.2_
 
-- [ ] 13.2 C++メモリ操作モジュールの実装
+- [x] 13.2 C++メモリ操作モジュールの実装
+
+
   - sort_array()をC++で実装（std::sort使用）
   - filter_array()をC++で実装
   - _要件: 2.1, 2.2_
 
-- [ ] 13.3 C++並列処理モジュールの実装
+- [x] 13.3 C++並列処理モジュールの実装
+
+
   - parallel_compute()をC++で実装（std::thread使用）
   - _要件: 3.1_
 

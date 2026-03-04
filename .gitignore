@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Testing
+.pytest_cache/
+.hypothesis/
+.coverage
+htmlcov/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Benchmark results (keep structure, ignore data)
+benchmark/results/json/*.json
+benchmark/results/csv/*.csv
+benchmark/results/graphs/*.png
+!benchmark/results/**/.gitkeep
+
+# Compiled extensions
+*.o
+*.obj
+*.dll
+*.dylib
+*.pyd
+
+# Build artifacts
+*.egg-info/
+dist/
+build/

@@ -1,0 +1,1 @@
+"""Rust extension implementation module."""

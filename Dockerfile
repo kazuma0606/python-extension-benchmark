@@ -1,0 +1,67 @@
+# Python Extension Benchmark Docker Environment
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies for all build tools
+RUN apt-get update && apt-get install -y \
+    # C/C++ compiler and build tools
+    gcc \
+    g++ \
+    make \
+    cmake \
+    # Python development headers
+    python3-dev \
+    # Additional build dependencies
+    build-essential \
+    pkg-config \
+    # Git for potential dependency installations
+    git \
+    # Curl for downloading Rust
+    curl \
+    # Clean up apt cache
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Verify Rust installation
+RUN rustc --version && cargo --version
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional Python build dependencies
+RUN pip install --no-cache-dir \
+    wheel \
+    maturin \
+    setuptools-rust
+
+# Copy the entire project
+COPY . .
+
+# Build all extension modules
+RUN echo "Building C extensions..." && \
+    cd benchmark/c_ext && python setup.py build_ext --inplace && cd ../..
+
+RUN echo "Building C++ extensions..." && \
+    python build_cpp_ext.py
+
+RUN echo "Building Cython extensions..." && \
+    python build_cython.py
+
+RUN echo "Building Rust extensions..." && \
+    python build_rust_ext.py
+
+# Set environment variables for optimal performance
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Create results directory
+RUN mkdir -p benchmark/results/{json,csv,graphs}
+
+# Default command
+CMD ["python", "-m", "pytest", "tests/", "-v"]

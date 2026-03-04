@@ -1,0 +1,98 @@
+services:
+  benchmark:
+    build: .
+    container_name: python-extension-benchmark
+    
+    # Resource limits for consistent benchmarking
+    deploy:
+      resources:
+        limits:
+          # Limit to 4 CPU cores for consistent results
+          cpus: '4.0'
+          # Limit to 8GB memory
+          memory: 8G
+        reservations:
+          # Reserve minimum resources
+          cpus: '2.0'
+          memory: 4G
+    
+    # Volume mounts for persistent results and development
+    volumes:
+      # Mount results directory to persist benchmark outputs
+      - ./benchmark/results:/app/benchmark/results
+      # Mount source code for development (optional)
+      - ./benchmark:/app/benchmark
+      - ./tests:/app/tests
+      # Mount build scripts
+      - ./build_c_ext.py:/app/build_c_ext.py
+      - ./build_cpp_ext.py:/app/build_cpp_ext.py
+      - ./build_cython.py:/app/build_cython.py
+      - ./build_rust_ext.py:/app/build_rust_ext.py
+    
+    # Environment variables
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      # Set consistent CPU affinity for benchmarking
+      - OMP_NUM_THREADS=4
+      - NUMBA_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+    
+    # Override default command for interactive use
+    command: /bin/bash
+    
+    # Keep container running for interactive benchmarking
+    tty: true
+    stdin_open: true
+
+  # Service for running benchmarks with different resource constraints
+  benchmark-limited:
+    build: .
+    container_name: python-extension-benchmark-limited
+    
+    # More restrictive resource limits for testing scalability
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+        reservations:
+          cpus: '1.0'
+          memory: 2G
+    
+    volumes:
+      - ./benchmark/results:/app/benchmark/results
+      - ./benchmark:/app/benchmark
+      - ./tests:/app/tests
+    
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - OMP_NUM_THREADS=2
+      - NUMBA_NUM_THREADS=2
+      - MKL_NUM_THREADS=2
+    
+    command: /bin/bash
+    tty: true
+    stdin_open: true
+
+  # Service for automated testing
+  test:
+    build: .
+    container_name: python-extension-benchmark-test
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    
+    volumes:
+      - ./benchmark/results:/app/benchmark/results
+    
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+    
+    # Run tests by default
+    command: python -m pytest tests/ -v --tb=short

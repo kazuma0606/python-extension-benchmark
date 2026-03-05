@@ -7,21 +7,21 @@ import numpy
 # Define extensions
 extensions = [
     Extension(
-        "benchmark.cython_ext.numeric",
-        ["benchmark/cython_ext/numeric.pyx"],
+        "numeric",
+        ["numeric.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=["-O3", "-fopenmp"],
         extra_link_args=["-fopenmp"],
     ),
     Extension(
-        "benchmark.cython_ext.memory",
-        ["benchmark/cython_ext/memory.pyx"],
+        "memory",
+        ["memory.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=["-O3"],
     ),
     Extension(
-        "benchmark.cython_ext.parallel",
-        ["benchmark/cython_ext/parallel.pyx"],
+        "parallel",
+        ["parallel.pyx"],
         include_dirs=[numpy.get_include()],
         extra_compile_args=["-O3", "-fopenmp"],
         extra_link_args=["-fopenmp"],

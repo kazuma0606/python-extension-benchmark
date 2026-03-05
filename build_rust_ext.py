@@ -29,18 +29,40 @@ def build_rust_extension():
         except subprocess.CalledProcessError:
             print("Warning: Could not install maturin")
         
-        # Build the extension
+        # Build the extension using maturin build instead of develop
         result = subprocess.run([
-            sys.executable, "-m", "maturin", "develop", "--release"
+            sys.executable, "-m", "maturin", "build", "--release", "--out", "dist"
         ], capture_output=True, text=True)
         
-        if result.returncode == 0:
-            print("✓ Rust extension built successfully")
-            return True
-        else:
+        if result.returncode != 0:
             print(f"✗ Build failed:")
             print(f"stdout: {result.stdout}")
             print(f"stderr: {result.stderr}")
+            return False
+        
+        # Install the built wheel
+        dist_dir = Path("dist")
+        if dist_dir.exists():
+            wheel_files = list(dist_dir.glob("*.whl"))
+            if wheel_files:
+                wheel_file = wheel_files[0]  # Use the first wheel file
+                install_result = subprocess.run([
+                    sys.executable, "-m", "pip", "install", str(wheel_file), "--force-reinstall"
+                ], capture_output=True, text=True)
+                
+                if install_result.returncode == 0:
+                    print("✓ Rust extension built and installed successfully")
+                    return True
+                else:
+                    print(f"✗ Installation failed:")
+                    print(f"stdout: {install_result.stdout}")
+                    print(f"stderr: {install_result.stderr}")
+                    return False
+            else:
+                print("✗ No wheel file found in dist directory")
+                return False
+        else:
+            print("✗ Dist directory not created")
             return False
             
     except FileNotFoundError:

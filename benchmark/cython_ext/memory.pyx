@@ -7,7 +7,7 @@ from libc.stdlib cimport malloc, free, qsort
 from libc.string cimport memcpy
 
 
-cdef int compare_ints(const void* a, const void* b) nogil:
+cdef int compare_ints(const void* a, const void* b) noexcept nogil:
     """Comparison function for qsort."""
     cdef int ia = (<int*>a)[0]
     cdef int ib = (<int*>b)[0]
@@ -30,13 +30,13 @@ def sort_array(arr: List[int]) -> List[int]:
     
     cdef int n = len(arr)
     cdef int* c_arr = <int*>malloc(n * sizeof(int))
+    cdef int i
     
     if c_arr == NULL:
         raise MemoryError("Failed to allocate memory for sorting")
     
     try:
         # Copy Python list to C array
-        cdef int i
         for i in range(n):
             c_arr[i] = arr[i]
         

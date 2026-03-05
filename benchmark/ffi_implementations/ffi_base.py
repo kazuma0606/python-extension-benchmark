@@ -176,13 +176,15 @@ class FFIDataConverter:
 class FFIBase(ABC):
     """Base class for all FFI implementations."""
     
-    def __init__(self, library_name: str):
+    def __init__(self, library_name: str, library_dir: str = None):
         """Initialize FFI base with library name.
         
         Args:
             library_name: Name of the shared library (without extension)
+            library_dir: Directory containing the library (if None, auto-detect)
         """
         self.library_name = library_name
+        self.library_dir = library_dir
         self.lib = None
         self.memory_manager = FFIMemoryManager()
         self.converter = FFIDataConverter()
@@ -195,12 +197,15 @@ class FFIBase(ABC):
     
     def _get_library_path(self) -> str:
         """Get the platform-specific library path."""
-        # Get the directory where this FFI implementation is located
-        import inspect
-        frame = inspect.currentframe()
-        caller_frame = frame.f_back
-        caller_file = caller_frame.f_globals['__file__']
-        base_dir = os.path.dirname(caller_file)
+        if self.library_dir:
+            base_dir = self.library_dir
+        else:
+            # Get the directory where this FFI implementation is located
+            import inspect
+            frame = inspect.currentframe()
+            caller_frame = frame.f_back.f_back  # Go up two frames to get the actual FFI implementation
+            caller_file = caller_frame.f_globals['__file__']
+            base_dir = os.path.dirname(caller_file)
         
         # Determine library extension based on platform
         system = platform.system().lower()

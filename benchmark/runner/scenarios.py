@@ -5,7 +5,7 @@
 
 import time
 import tracemalloc
-from typing import Any, Tuple
+from typing import Any, Tuple, List
 from benchmark.models import Scenario, Implementation
 
 
@@ -149,6 +149,54 @@ class MemoryScenario(Scenario):
         memory_usage_mb = peak / (1024 * 1024)
         
         return output, execution_time_ms, memory_usage_mb
+
+
+def get_all_scenarios() -> List[Scenario]:
+    """全ベンチマークシナリオを取得
+    
+    Returns:
+        List[Scenario]: 全シナリオのリスト
+    """
+    scenarios = [
+        # 数値計算シナリオ
+        NumericScenario("primes"),
+        NumericScenario("matrix"),
+        
+        # メモリ操作シナリオ
+        MemoryScenario("sort"),
+        MemoryScenario("filter"),
+        
+        # 並列処理シナリオ: スレッド数1、2、4、8、16で計測
+        ParallelScenario(1),
+        ParallelScenario(2),
+        ParallelScenario(4),
+        ParallelScenario(8),
+        ParallelScenario(16),
+    ]
+    
+    return scenarios
+
+
+def get_default_implementations() -> List[str]:
+    """デフォルトの実装リストを取得
+    
+    Returns:
+        List[str]: 12の実装名
+    """
+    return [
+        "python",      # Pure Python
+        "numpy_impl",  # NumPy
+        "c_ext",       # C
+        "cpp_ext",     # C++
+        "cython_ext",  # Cython
+        "rust_ext",    # Rust
+        "fortran_ext", # Fortran
+        "julia_ext",   # Julia
+        "go_ext",      # Go
+        "zig_ext",     # Zig
+        "nim_ext",     # Nim
+        "kotlin_ext",  # Kotlin
+    ]
 
 
 class ParallelScenario(Scenario):

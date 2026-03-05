@@ -289,3 +289,208 @@ class Visualizer:
         if match:
             return int(match.group(1))
         return 1
+    
+    def plot_comprehensive_comparison(
+        self,
+        results: List[BenchmarkResult],
+        output_path: str
+    ) -> str:
+        """12実装の包括的比較グラフを生成
+        
+        Args:
+            results: ベンチマーク結果のリスト
+            output_path: 出力ファイル名（拡張子なし）
+            
+        Returns:
+            出力されたファイルのパス
+        """
+        successful_results = [r for r in results if r.status == "SUCCESS"]
+        
+        if not successful_results:
+            # データがない場合は空のグラフを作成
+            fig, ax = plt.subplots(figsize=(12, 8))
+            ax.text(0.5, 0.5, 'No data available for comprehensive comparison',
+                   ha='center', va='center', fontsize=14)
+            ax.set_xlim(0, 1)
+            ax.set_ylim(0, 1)
+            ax.axis('off')
+        else:
+            # 4つのサブプロット：実行時間、メモリ使用量、相対スコア、言語別統計
+            fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(16, 12))
+            
+            # 1. 実行時間の比較（シナリオ別）
+            self._plot_execution_time_heatmap(successful_results, ax1)
+            
+            # 2. メモリ使用量の比較
+            self._plot_memory_comparison(successful_results, ax2)
+            
+            # 3. 相対スコアの比較
+            self._plot_relative_score_comparison(successful_results, ax3)
+            
+            # 4. 言語別統計
+            self._plot_language_statistics(successful_results, ax4)
+        
+        plt.tight_layout()
+        
+        # ファイルに保存
+        full_path = self.graphs_dir / f"{output_path}.png"
+        plt.savefig(full_path, dpi=150, bbox_inches='tight')
+        plt.close(fig)
+        
+        return str(full_path)
+    
+    def _plot_execution_time_heatmap(self, results: List[BenchmarkResult], ax) -> None:
+        """実行時間のヒートマップを描画"""
+        import numpy as np
+        
+        # データを整理
+        implementations = sorted(set(r.implementation_name for r in results))
+        scenarios = sorted(set(r.scenario_name for r in results))
+        
+        # ヒートマップ用のデータ行列を作成
+        data_matrix = np.full((len(implementations), len(scenarios)), np.nan)
+        
+        for i, impl in enumerate(implementations):
+            for j, scenario in enumerate(scenarios):
+                matching_results = [r for r in results 
+                                  if r.implementation_name == impl and r.scenario_name == scenario]
+                if matching_results:
+                    data_matrix[i, j] = matching_results[0].mean_time
+        
+        # ヒートマップを描画
+        im = ax.imshow(data_matrix, cmap='YlOrRd', aspect='auto')
+        
+        # 軸の設定
+        ax.set_xticks(range(len(scenarios)))
+        ax.set_yticks(range(len(implementations)))
+        ax.set_xticklabels([s.replace(':', '\n') for s in scenarios], rotation=45, ha='right')
+        ax.set_yticklabels(implementations)
+        ax.set_title('Execution Time Heatmap (ms)')
+        
+        # カラーバーを追加
+        plt.colorbar(im, ax=ax, shrink=0.8)
+        
+        # 値をセルに表示
+        for i in range(len(implementations)):
+            for j in range(len(scenarios)):
+                if not np.isnan(data_matrix[i, j]):
+                    text = ax.text(j, i, f'{data_matrix[i, j]:.1f}',
+                                 ha="center", va="center", color="black", fontsize=8)
+    
+    def _plot_memory_comparison(self, results: List[BenchmarkResult], ax) -> None:
+        """メモリ使用量の比較を描画"""
+        # 実装別の平均メモリ使用量を計算
+        impl_memory = {}
+        for result in results:
+            if result.memory_usage:
+                impl = result.implementation_name
+                peak_memory = max(result.memory_usage)
+                
+                if impl not in impl_memory:
+                    impl_memory[impl] = []
+                impl_memory[impl].append(peak_memory)
+        
+        # 平均値を計算
+        implementations = []
+        avg_memory = []
+        
+        for impl, memories in impl_memory.items():
+            implementations.append(impl)
+            avg_memory.append(sum(memories) / len(memories))
+        
+        # 棒グラフを描画
+        bars = ax.bar(implementations, avg_memory, color='lightblue', edgecolor='navy')
+        ax.set_ylabel('Average Peak Memory (MB)')
+        ax.set_title('Memory Usage Comparison')
+        ax.tick_params(axis='x', rotation=45)
+        
+        # 値をバーの上に表示
+        for bar, memory in zip(bars, avg_memory):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                   f'{memory:.1f}',
+                   ha='center', va='bottom', fontsize=9)
+    
+    def _plot_relative_score_comparison(self, results: List[BenchmarkResult], ax) -> None:
+        """相対スコアの比較を描画"""
+        # 実装別の平均相対スコアを計算
+        impl_scores = {}
+        for result in results:
+            impl = result.implementation_name
+            if impl not in impl_scores:
+                impl_scores[impl] = []
+            impl_scores[impl].append(result.relative_score)
+        
+        # 平均値を計算してソート
+        avg_scores = []
+        for impl, scores in impl_scores.items():
+            avg_score = sum(scores) / len(scores)
+            avg_scores.append((impl, avg_score))
+        
+        avg_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        implementations = [item[0] for item in avg_scores]
+        scores = [item[1] for item in avg_scores]
+        
+        # 棒グラフを描画（色分け：スコアに応じて）
+        colors = ['green' if s >= 1.0 else 'orange' if s >= 0.5 else 'red' for s in scores]
+        bars = ax.bar(implementations, scores, color=colors, alpha=0.7)
+        
+        ax.set_ylabel('Average Relative Score')
+        ax.set_title('Performance Ranking (vs Python baseline)')
+        ax.tick_params(axis='x', rotation=45)
+        ax.axhline(y=1.0, color='black', linestyle='--', alpha=0.5, label='Python baseline')
+        ax.legend()
+        
+        # 値をバーの上に表示
+        for bar, score in zip(bars, scores):
+            height = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width()/2., height,
+                   f'{score:.2f}',
+                   ha='center', va='bottom', fontsize=9)
+    
+    def _plot_language_statistics(self, results: List[BenchmarkResult], ax) -> None:
+        """言語別統計を描画"""
+        # 言語別の統計を計算
+        language_map = {
+            "python": "Python", "numpy_impl": "NumPy", "c_ext": "C",
+            "cpp_ext": "C++", "cython_ext": "Cython", "rust_ext": "Rust",
+            "fortran_ext": "Fortran", "julia_ext": "Julia", "go_ext": "Go",
+            "zig_ext": "Zig", "nim_ext": "Nim", "kotlin_ext": "Kotlin"
+        }
+        
+        language_stats = {}
+        for result in results:
+            lang = language_map.get(result.implementation_name, "Unknown")
+            if lang not in language_stats:
+                language_stats[lang] = {'count': 0, 'total_score': 0.0}
+            
+            language_stats[lang]['count'] += 1
+            language_stats[lang]['total_score'] += result.relative_score
+        
+        # 平均スコアを計算
+        languages = []
+        avg_scores = []
+        counts = []
+        
+        for lang, stats in language_stats.items():
+            if stats['count'] > 0:
+                languages.append(lang)
+                avg_scores.append(stats['total_score'] / stats['count'])
+                counts.append(stats['count'])
+        
+        # 散布図を描画（x軸：実装数、y軸：平均スコア）
+        scatter = ax.scatter(counts, avg_scores, s=100, alpha=0.7, c=avg_scores, cmap='viridis')
+        
+        # 言語名をラベルとして追加
+        for i, lang in enumerate(languages):
+            ax.annotate(lang, (counts[i], avg_scores[i]), 
+                       xytext=(5, 5), textcoords='offset points', fontsize=9)
+        
+        ax.set_xlabel('Number of Implementations')
+        ax.set_ylabel('Average Relative Score')
+        ax.set_title('Language Performance Overview')
+        ax.grid(True, alpha=0.3)
+        
+        # カラーバーを追加
+        plt.colorbar(scatter, ax=ax, shrink=0.8, label='Avg Score')

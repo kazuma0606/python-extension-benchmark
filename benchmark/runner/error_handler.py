@@ -55,9 +55,26 @@ class ErrorHandler:
         
         self.error_logs.append(error_log)
         
+        # 実装別の詳細なエラーメッセージ
+        language_hints = {
+            "julia_ext": "Julia environment may not be properly set up. Check Julia installation and PyCall.jl.",
+            "go_ext": "Go shared library may not be built. Run 'make' in benchmark/go_ext/.",
+            "zig_ext": "Zig shared library may not be built. Run 'zig build' in benchmark/zig_ext/.",
+            "nim_ext": "Nim extension may not be compiled. Check nimpy installation and compilation.",
+            "kotlin_ext": "Kotlin/Native library may not be built. Run 'gradle build' in benchmark/kotlin_ext/.",
+            "rust_ext": "Rust extension may not be compiled. Run 'maturin develop' in benchmark/rust_ext/.",
+            "fortran_ext": "Fortran extension may not be compiled. Check gfortran installation.",
+            "cython_ext": "Cython extension may not be compiled. Run build_cython.py script.",
+            "cpp_ext": "C++ extension may not be compiled. Check CMake build process.",
+            "c_ext": "C extension may not be compiled. Run 'python setup.py build_ext --inplace'."
+        }
+        
+        hint = language_hints.get(implementation_name, "Check implementation setup and dependencies.")
+        
         # ユーザーへの通知
         print(f"⚠️  Warning: Failed to import implementation '{implementation_name}'")
         print(f"   Error: {error}")
+        print(f"   Hint: {hint}")
         print(f"   This implementation will be skipped.\n")
         
         return error_log
@@ -147,6 +164,30 @@ class ErrorHandler:
         """エラーサマリーを出力"""
         print(self.get_error_summary())
     
+    def get_implementation_statistics(self) -> dict:
+        """実装別の統計情報を取得
+        
+        Returns:
+            dict: 実装別のエラー統計
+        """
+        stats = {}
+        for log in self.error_logs:
+            impl = log.implementation_name
+            if impl not in stats:
+                stats[impl] = {
+                    'import_errors': 0,
+                    'execution_errors': 0,
+                    'total_errors': 0
+                }
+            
+            if log.error_type == "ImportError":
+                stats[impl]['import_errors'] += 1
+            else:
+                stats[impl]['execution_errors'] += 1
+            stats[impl]['total_errors'] += 1
+        
+        return stats
+
     def has_errors(self) -> bool:
         """エラーが発生したかどうか
         

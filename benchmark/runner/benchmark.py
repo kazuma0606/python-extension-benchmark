@@ -245,23 +245,8 @@ class BenchmarkRunner:
         """
         if scenarios is None:
             # デフォルトシナリオを使用
-            from benchmark.runner.scenarios import (
-                NumericScenario,
-                MemoryScenario,
-                ParallelScenario
-            )
-            scenarios = [
-                NumericScenario("primes"),
-                NumericScenario("matrix"),
-                MemoryScenario("sort"),
-                MemoryScenario("filter"),
-                # 並列処理シナリオ: スレッド数1、2、4、8、16で計測
-                ParallelScenario(1),
-                ParallelScenario(2),
-                ParallelScenario(4),
-                ParallelScenario(8),
-                ParallelScenario(16),
-            ]
+            from benchmark.runner.scenarios import get_all_scenarios
+            scenarios = get_all_scenarios()
         
         all_results = []
         for scenario in scenarios:
@@ -278,6 +263,30 @@ class BenchmarkRunner:
         
         return all_results
     
+    def get_all_available_implementations(self) -> List[str]:
+        """利用可能な全実装名を取得
+        
+        Returns:
+            List[str]: 利用可能な実装名のリスト
+        """
+        all_implementations = [
+            "python", "numpy_impl", "c_ext", "cpp_ext", "cython_ext", 
+            "rust_ext", "fortran_ext", "julia_ext", "go_ext", 
+            "zig_ext", "nim_ext", "kotlin_ext"
+        ]
+        
+        available = []
+        for impl_name in all_implementations:
+            module_name = f"benchmark.{impl_name}"
+            try:
+                __import__(module_name)
+                available.append(impl_name)
+            except ImportError:
+                # 実装が利用できない場合はスキップ
+                continue
+        
+        return available
+
     def load_implementations(
         self,
         implementation_names: List[str]
@@ -300,10 +309,12 @@ class BenchmarkRunner:
             "cpp_ext": "C++",
             "cython_ext": "Cython",
             "rust_ext": "Rust",
+            "fortran_ext": "Fortran",
             "julia_ext": "Julia",
             "go_ext": "Go",
             "zig_ext": "Zig",
             "nim_ext": "Nim",
+            "kotlin_ext": "Kotlin",
         }
         
         for name in implementation_names:
@@ -325,3 +336,111 @@ class BenchmarkRunner:
                   f"{', '.join(impl.name for impl in implementations)}\n")
         
         return implementations
+    
+    def run_comprehensive_benchmark(
+        self,
+        scenarios: Optional[List[Scenario]] = None,
+        implementation_filter: Optional[List[str]] = None
+    ) -> List[BenchmarkResult]:
+        """包括的ベンチマークを実行（全12実装対応）
+        
+        Args:
+            scenarios: 実行するシナリオのリスト（Noneの場合はデフォルト）
+            implementation_filter: 実行する実装のフィルタ（Noneの場合は全て）
+            
+        Returns:
+            List[BenchmarkResult]: 全シナリオの計測結果
+        """
+        from benchmark.runner.scenarios import get_default_implementations
+        
+        # 実装リストを決定
+        if implementation_filter is None:
+            target_implementations = get_default_implementations()
+        else:
+            target_implementations = implementation_filter
+        
+        # 利用可能な実装をロード
+        available_implementations = self.get_all_available_implementations()
+        filtered_implementations = [
+            impl for impl in target_implementations 
+            if impl in available_implementations
+        ]
+        
+        print(f"🚀 Starting comprehensive benchmark with {len(filtered_implementations)} implementations:")
+        print(f"   Target: {', '.join(target_implementations)}")
+        print(f"   Available: {', '.join(filtered_implementations)}")
+        
+        if len(filtered_implementations) != len(target_implementations):
+            missing = set(target_implementations) - set(filtered_implementations)
+            print(f"   Missing: {', '.join(missing)}")
+        print()
+        
+        # 実装をロード
+        implementations = self.load_implementations(filtered_implementations)
+        
+        if not implementations:
+            print("❌ No implementations could be loaded. Aborting benchmark.")
+            return []
+        
+        # ベンチマーク実行
+        results = self.run_all_scenarios(implementations, scenarios)
+        
+        # 結果サマリーを出力
+        self._print_benchmark_summary(results, implementations)
+        
+        return results
+    
+    def _print_benchmark_summary(
+        self,
+        results: List[BenchmarkResult],
+        implementations: List[Implementation]
+    ) -> None:
+        """ベンチマーク結果のサマリーを出力
+        
+        Args:
+            results: ベンチマーク結果
+            implementations: 実行された実装
+        """
+        print(f"\n{'='*80}")
+        print(f"BENCHMARK SUMMARY")
+        print(f"{'='*80}")
+        
+        # 実装別の成功/失敗統計
+        impl_stats = {}
+        for result in results:
+            impl = result.implementation_name
+            if impl not in impl_stats:
+                impl_stats[impl] = {'success': 0, 'error': 0}
+            
+            if result.status == "SUCCESS":
+                impl_stats[impl]['success'] += 1
+            else:
+                impl_stats[impl]['error'] += 1
+        
+        print(f"\nImplementation Statistics:")
+        print(f"{'Implementation':<15} {'Language':<10} {'Success':<8} {'Errors':<8} {'Status'}")
+        print(f"{'-'*60}")
+        
+        language_map = {
+            "python": "Python", "numpy_impl": "NumPy", "c_ext": "C",
+            "cpp_ext": "C++", "cython_ext": "Cython", "rust_ext": "Rust",
+            "fortran_ext": "Fortran", "julia_ext": "Julia", "go_ext": "Go",
+            "zig_ext": "Zig", "nim_ext": "Nim", "kotlin_ext": "Kotlin"
+        }
+        
+        for impl in implementations:
+            stats = impl_stats.get(impl.name, {'success': 0, 'error': 0})
+            language = language_map.get(impl.name, "Unknown")
+            status = "✓ OK" if stats['error'] == 0 else "⚠ ERRORS"
+            
+            print(f"{impl.name:<15} {language:<10} {stats['success']:<8} {stats['error']:<8} {status}")
+        
+        # エラー統計
+        if self.error_handler.has_errors():
+            error_stats = self.error_handler.get_implementation_statistics()
+            print(f"\nError Details:")
+            for impl, stats in error_stats.items():
+                print(f"  {impl}: {stats['import_errors']} import, {stats['execution_errors']} runtime")
+        
+        print(f"\nTotal Results: {len(results)} benchmark runs completed")
+        print(f"{'='*80}\n")

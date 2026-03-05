@@ -1,7 +1,8 @@
 services:
+  # Main benchmark service with all 12 implementations
   benchmark:
     build: .
-    container_name: python-extension-benchmark
+    container_name: python-extension-benchmark-multi-lang
     
     # Resource limits for consistent benchmarking
     deploy:
@@ -9,7 +10,7 @@ services:
         limits:
           # Limit to 4 CPU cores for consistent results
           cpus: '4.0'
-          # Limit to 8GB memory
+          # Limit to 8GB memory (increased for multi-language support)
           memory: 8G
         reservations:
           # Reserve minimum resources
@@ -23,11 +24,7 @@ services:
       # Mount source code for development (optional)
       - ./benchmark:/app/benchmark
       - ./tests:/app/tests
-      # Mount build scripts
-      - ./build_c_ext.py:/app/build_c_ext.py
-      - ./build_cpp_ext.py:/app/build_cpp_ext.py
-      - ./build_cython.py:/app/build_cython.py
-      - ./build_rust_ext.py:/app/build_rust_ext.py
+      - ./scripts:/app/scripts
     
     # Environment variables
     environment:
@@ -37,6 +34,10 @@ services:
       - OMP_NUM_THREADS=4
       - NUMBA_NUM_THREADS=4
       - MKL_NUM_THREADS=4
+      - JULIA_NUM_THREADS=4
+      # Go environment
+      - GOPATH=/root/go
+      - GOBIN=/root/go/bin
     
     # Override default command for interactive use
     command: /bin/bash
@@ -44,6 +45,42 @@ services:
     # Keep container running for interactive benchmarking
     tty: true
     stdin_open: true
+
+  # Service for comprehensive benchmark execution
+  benchmark-comprehensive:
+    build: .
+    container_name: python-extension-benchmark-comprehensive
+    
+    # Full resource allocation for comprehensive benchmarks
+    deploy:
+      resources:
+        limits:
+          cpus: '6.0'
+          memory: 12G
+        reservations:
+          cpus: '4.0'
+          memory: 8G
+    
+    volumes:
+      - ./benchmark/results:/app/benchmark/results
+    
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - OMP_NUM_THREADS=6
+      - NUMBA_NUM_THREADS=6
+      - MKL_NUM_THREADS=6
+      - JULIA_NUM_THREADS=6
+      - GOPATH=/root/go
+      - GOBIN=/root/go/bin
+    
+    # Run comprehensive benchmark by default
+    command: python -c "
+from benchmark.runner.benchmark import BenchmarkRunner;
+runner = BenchmarkRunner();
+results = runner.run_comprehensive_benchmark();
+print(f'Comprehensive benchmark completed with {len(results)} results');
+"
 
   # Service for running benchmarks with different resource constraints
   benchmark-limited:
@@ -71,12 +108,15 @@ services:
       - OMP_NUM_THREADS=2
       - NUMBA_NUM_THREADS=2
       - MKL_NUM_THREADS=2
+      - JULIA_NUM_THREADS=2
+      - GOPATH=/root/go
+      - GOBIN=/root/go/bin
     
     command: /bin/bash
     tty: true
     stdin_open: true
 
-  # Service for automated testing
+  # Service for automated testing of all implementations
   test:
     build: .
     container_name: python-extension-benchmark-test
@@ -84,8 +124,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '2.0'
-          memory: 4G
+          cpus: '4.0'
+          memory: 6G
     
     volumes:
       - ./benchmark/results:/app/benchmark/results
@@ -93,6 +133,66 @@ services:
     environment:
       - PYTHONPATH=/app
       - PYTHONUNBUFFERED=1
+      - OMP_NUM_THREADS=4
+      - NUMBA_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - JULIA_NUM_THREADS=4
+      - GOPATH=/root/go
+      - GOBIN=/root/go/bin
     
-    # Run tests by default
-    command: python -m pytest tests/ -v --tb=short
+    # Run multi-language integration tests by default
+    command: python -m pytest tests/test_multi_language_integration.py -v --tb=short
+
+  # Service for health checking all language implementations
+  health-check:
+    build: .
+    container_name: python-extension-benchmark-health
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 4G
+    
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - GOPATH=/root/go
+      - GOBIN=/root/go/bin
+    
+    # Run health check by default
+    command: health-check
+
+  # Service for development and debugging
+  dev:
+    build: .
+    container_name: python-extension-benchmark-dev
+    
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'
+          memory: 8G
+    
+    volumes:
+      # Mount entire project for development
+      - .:/app
+      # Separate volume for build artifacts to avoid conflicts
+      - benchmark-build-cache:/app/build
+    
+    environment:
+      - PYTHONPATH=/app
+      - PYTHONUNBUFFERED=1
+      - OMP_NUM_THREADS=4
+      - NUMBA_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - JULIA_NUM_THREADS=4
+      - GOPATH=/root/go
+      - GOBIN=/root/go/bin
+    
+    command: /bin/bash
+    tty: true
+    stdin_open: true
+
+volumes:
+  benchmark-build-cache:

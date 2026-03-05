@@ -32,6 +32,13 @@ ENV PATH="/root/.cargo/bin:${PATH}"
 # Verify Rust installation
 RUN rustc --version && cargo --version
 
+# Install Julia
+RUN curl -fsSL https://install.julialang.org | sh -s -- --yes
+ENV PATH="/root/.juliaup/bin:${PATH}"
+
+# Verify Julia installation
+RUN julia --version
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -61,6 +68,9 @@ RUN echo "Building Rust extensions..." && \
 
 RUN echo "Building Fortran extensions..." && \
     python build_fortran_ext.py
+
+RUN echo "Building Julia extensions..." && \
+    python build_julia_ext.py
 
 # Set environment variables for optimal performance
 ENV PYTHONPATH=/app

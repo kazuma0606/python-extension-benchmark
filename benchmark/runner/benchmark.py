@@ -300,6 +300,7 @@ class BenchmarkRunner:
             "cpp_ext": "C++",
             "cython_ext": "Cython",
             "rust_ext": "Rust",
+            "julia_ext": "Julia",
         }
         
         for name in implementation_names:

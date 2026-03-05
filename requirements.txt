@@ -6,3 +6,4 @@ psutil>=5.9.0
 cython>=3.0.0
 setuptools>=68.0.0
 pybind11>=2.10.0
+julia>=0.6.0

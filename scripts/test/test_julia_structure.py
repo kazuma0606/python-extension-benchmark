@@ -12,8 +12,8 @@ def test_julia_extension_structure():
     """Test that Julia extension files exist and have correct structure."""
     print("🧪 Testing Julia Extension Structure...")
     
-    # Check if Julia extension directory exists
-    julia_ext_dir = Path('benchmark/julia_ext')
+    # Check if Julia extension directory exists (adjust path for new location)
+    julia_ext_dir = Path(__file__).parent.parent.parent / 'benchmark' / 'julia_ext'
     if not julia_ext_dir.exists():
         print("❌ Julia extension directory not found")
         return False
@@ -36,8 +36,8 @@ def test_julia_extension_structure():
             print(f"❌ {filename} missing ({description})")
             return False
     
-    # Check build script
-    build_script = Path('build_julia_ext.py')
+    # Check build script (adjust path for new location)
+    build_script = Path(__file__).parent / 'build_julia_ext.py'
     if build_script.exists():
         print("✅ build_julia_ext.py exists")
     else:
@@ -114,9 +114,9 @@ def test_julia_extension_structure():
         print(f"❌ Error checking Julia functions: {e}")
         return False
     
-    # Check integration with benchmark system
+    # Check integration with benchmark system (adjust path for new location)
     try:
-        benchmark_file = Path('benchmark/runner/benchmark.py')
+        benchmark_file = Path(__file__).parent.parent.parent / 'benchmark' / 'runner' / 'benchmark.py'
         if benchmark_file.exists():
             with open(benchmark_file, 'r') as f:
                 benchmark_content = f.read()
@@ -131,8 +131,8 @@ def test_julia_extension_structure():
     except Exception as e:
         print(f"⚠️  Could not check benchmark integration: {e}")
     
-    # Check test file
-    test_file = Path('tests/test_julia_extension.py')
+    # Check test file (adjust path for new location)
+    test_file = Path(__file__).parent.parent.parent / 'tests' / 'test_julia_extension.py'
     if test_file.exists():
         print("✅ Julia extension test file exists")
     else:
@@ -142,7 +142,7 @@ def test_julia_extension_structure():
     print("\nNext steps:")
     print("1. Install Julia: https://julialang.org/downloads/")
     print("2. Add Julia to PATH")
-    print("3. Run: python build_julia_ext.py")
+    print("3. Run: python scripts/build/build_julia_ext.py")
     print("4. Test: python -m pytest tests/test_julia_extension.py -v")
     
     return True
@@ -151,7 +151,7 @@ def test_docker_integration():
     """Test Docker integration."""
     print("\n🐳 Testing Docker Integration...")
     
-    dockerfile = Path('Dockerfile')
+    dockerfile = Path(__file__).parent.parent.parent / 'Dockerfile'
     if not dockerfile.exists():
         print("❌ Dockerfile not found")
         return False
@@ -173,8 +173,8 @@ def test_docker_integration():
         print("❌ Julia extension build not found in Dockerfile")
         return False
     
-    # Check requirements.txt
-    requirements_file = Path('requirements.txt')
+    # Check requirements.txt (adjust path for new location)
+    requirements_file = Path(__file__).parent.parent.parent / 'requirements.txt'
     if requirements_file.exists():
         with open(requirements_file, 'r') as f:
             requirements_content = f.read()

@@ -16,6 +16,9 @@ def build_docker_image():
     print("🐳 Building Docker image with Julia extension...")
     
     try:
+        # Change to project root directory
+        os.chdir(os.path.join(os.path.dirname(__file__), '..', '..'))
+        
         result = subprocess.run([
             "docker", "build", "-t", "benchmark", "."
         ], capture_output=True, text=True, timeout=600)

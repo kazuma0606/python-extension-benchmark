@@ -10,7 +10,7 @@ from pathlib import Path
 def validate_julia_extension():
     """Validate that Julia extension files are properly structured."""
     
-    julia_ext_dir = Path('benchmark/julia_ext')
+    julia_ext_dir = Path(__file__).parent.parent.parent / 'benchmark' / 'julia_ext'
     
     # Check if directory exists
     if not julia_ext_dir.exists():
@@ -37,8 +37,8 @@ def validate_julia_extension():
         print(f"❌ Missing files: {missing_files}")
         return False
     
-    # Check build script
-    build_script = Path('build_julia_ext.py')
+    # Check build script (adjust path for new location)
+    build_script = Path(__file__).parent / 'build_julia_ext.py'
     if build_script.exists():
         print("✅ build_julia_ext.py exists")
     else:

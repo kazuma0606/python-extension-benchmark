@@ -1,4 +1,4 @@
-include("benchmark/julia_ext/functions.jl")
+include("../../benchmark/julia_ext/functions.jl")
 
 println("Testing Julia functions...")
 

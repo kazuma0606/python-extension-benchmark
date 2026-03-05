@@ -301,6 +301,9 @@ class BenchmarkRunner:
             "cython_ext": "Cython",
             "rust_ext": "Rust",
             "julia_ext": "Julia",
+            "go_ext": "Go",
+            "zig_ext": "Zig",
+            "nim_ext": "Nim",
         }
         
         for name in implementation_names:

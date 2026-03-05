@@ -9,6 +9,11 @@ Direct Julia Property Test Runner
 import sys
 import math
 from typing import List
+from pathlib import Path
+
+# Add benchmark directory to path (adjust for new location)
+benchmark_path = Path(__file__).parent.parent.parent / 'benchmark'
+sys.path.insert(0, str(benchmark_path))
 
 def is_prime(n: int) -> bool:
     """Helper function to check if a number is prime."""
@@ -54,11 +59,7 @@ def test_find_primes_property():
     print("🧪 Testing find_primes property...")
     
     try:
-        from benchmark import julia_ext
-        
-        if not julia_ext.is_available():
-            print("❌ Julia extension not available")
-            return False
+        from julia_ext import find_primes
         
         test_values = [10, 20, 50, 100]
         
@@ -66,7 +67,7 @@ def test_find_primes_property():
             print(f"  Testing n={n}...")
             
             # Get result from Julia implementation
-            result = julia_ext.find_primes(n)
+            result = find_primes(n)
             
             # Convert numpy types to Python types if needed
             if hasattr(result, 'tolist'):

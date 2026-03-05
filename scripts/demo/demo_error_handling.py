@@ -3,6 +3,14 @@
 このスクリプトは、エラーハンドリング機能を実演します。
 """
 
+import sys
+import os
+from pathlib import Path
+
+# Add benchmark directory to path (adjust for new location)
+benchmark_path = Path(__file__).parent.parent.parent / 'benchmark'
+sys.path.insert(0, str(benchmark_path))
+
 from benchmark.runner.benchmark import BenchmarkRunner
 from benchmark.runner.scenarios import NumericScenario
 

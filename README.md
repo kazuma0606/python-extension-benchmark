@@ -61,6 +61,22 @@ benchmark/
 │       ├── numeric.rs   # Rust numeric algorithms
 │       ├── memory.rs    # Rust memory operations
 │       └── parallel.rs  # Rust parallel processing (rayon)
+├── julia_ext/           # Julia implementations
+│   ├── functions.jl     # Julia function implementations
+│   ├── __init__.py      # Python integration layer
+│   └── setup.py         # Build configuration
+├── go_ext/              # Go implementations
+│   ├── functions.go     # Go function implementations
+│   ├── __init__.py      # Python integration layer
+│   └── Makefile         # Build configuration
+├── zig_ext/             # Zig implementations
+│   ├── functions.zig    # Zig function implementations
+│   ├── __init__.py      # Python integration layer
+│   └── build.zig        # Build configuration
+├── nim_ext/             # Nim implementations
+│   ├── functions.nim    # Nim function implementations
+│   ├── __init__.py      # Python integration layer
+│   └── setup.py         # Build configuration
 ├── runner/              # Benchmark execution framework
 │   ├── benchmark.py     # Main benchmark runner
 │   ├── scenarios.py     # Scenario definitions
@@ -69,15 +85,32 @@ benchmark/
 │   ├── visualize.py     # Graph generation
 │   ├── validator.py     # Output validation
 │   └── error_handler.py # Error handling
-├── results/             # Benchmark results
-│   ├── json/            # JSON format results
-│   ├── csv/             # CSV format results
-│   └── graphs/          # Generated graphs (PNG)
-├── tests/               # Test suite
-│   ├── test_*.py        # Unit and integration tests
-│   └── conftest.py      # Pytest configuration
-├── docs/                # Documentation
-└── docker/              # Docker environment
+└── results/             # Benchmark results
+    ├── json/            # JSON format results
+    ├── csv/             # CSV format results
+    └── graphs/          # Generated graphs (PNG)
+scripts/                 # Build and utility scripts
+├── build/               # Build scripts for all extensions
+│   ├── build_c_ext.py
+│   ├── build_cpp_ext.py
+│   ├── build_julia_ext.py
+│   ├── build_go_ext.py
+│   ├── build_zig_ext.py
+│   ├── build_nim_ext.py
+│   └── ...
+├── test/                # Test and validation scripts
+│   ├── run_julia_property_tests.py
+│   ├── run_go_property_tests.py
+│   ├── test_julia_structure.py
+│   └── ...
+└── demo/                # Demo scripts
+    └── demo_error_handling.py
+tests/                   # Test suite
+├── test_*.py            # Unit and integration tests
+└── conftest.py          # Pytest configuration
+docs/                    # Documentation
+.kiro/                   # Kiro IDE specifications
+└── specs/               # Feature specifications
     ├── Dockerfile
     └── docker-compose.yml
 ```
@@ -115,10 +148,14 @@ docker-compose up test
 pip install -r requirements.txt
 
 # Build all extensions
-python build_c_ext.py
-python build_cpp_ext.py
-python build_cython.py
-python build_rust_ext.py
+python scripts/build/build_c_ext.py
+python scripts/build/build_cpp_ext.py
+python scripts/build/build_cython.py
+python scripts/build/build_rust_ext.py
+python scripts/build/build_julia_ext.py
+python scripts/build/build_go_ext.py
+python scripts/build/build_zig_ext.py
+python scripts/build/build_nim_ext.py
 
 # Run tests to verify installation
 pytest tests/ -v

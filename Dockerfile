@@ -54,6 +54,13 @@ ENV PATH="/usr/local/zig-linux-x86_64-0.15.2:${PATH}"
 # Verify Zig installation
 RUN zig version
 
+# Install Nim
+RUN curl -fsSL https://nim-lang.org/choosenim/init.sh | sh -s -- -y
+ENV PATH="/root/.nimble/bin:${PATH}"
+
+# Verify Nim installation
+RUN nim --version
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -72,26 +79,29 @@ RUN echo "Building C extensions..." && \
     cd benchmark/c_ext && python setup.py build_ext --inplace && cd ../..
 
 RUN echo "Building C++ extensions..." && \
-    python build_cpp_ext.py
+    python scripts/build/build_cpp_ext.py
 
 # Skip Cython for now to test Fortran
 # RUN echo "Building Cython extensions..." && \
-#     python build_cython.py
+#     python scripts/build/build_cython.py
 
 RUN echo "Building Rust extensions..." && \
-    python build_rust_ext.py
+    python scripts/build/build_rust_ext.py
 
 RUN echo "Building Fortran extensions..." && \
-    python build_fortran_ext.py
+    python scripts/build/build_fortran_ext.py
 
 RUN echo "Building Julia extensions..." && \
-    python build_julia_ext.py
+    python scripts/build/build_julia_ext.py
 
 RUN echo "Building Go extensions..." && \
-    python build_go_ext.py
+    python scripts/build/build_go_ext.py
 
 RUN echo "Building Zig extensions..." && \
-    python build_zig_ext.py
+    python scripts/build/build_zig_ext.py
+
+RUN echo "Building Nim extensions..." && \
+    python scripts/build/build_nim_ext.py
 
 # Set environment variables for optimal performance
 ENV PYTHONPATH=/app

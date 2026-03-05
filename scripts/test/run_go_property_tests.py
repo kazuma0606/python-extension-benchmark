@@ -18,8 +18,9 @@ def check_go_extension():
     print("🔍 Checking Go extension availability...")
     
     try:
-        # Try to import the Go extension
-        sys.path.insert(0, 'benchmark')
+        # Try to import the Go extension (adjust path for new location)
+        benchmark_path = Path(__file__).parent.parent.parent / 'benchmark'
+        sys.path.insert(0, str(benchmark_path))
         from go_ext import parallel_compute
         
         # Test basic functionality
@@ -46,6 +47,9 @@ def run_go_property_tests():
     print("🧪 Running Go property-based tests...")
     
     try:
+        # Change to project root directory
+        os.chdir(os.path.join(os.path.dirname(__file__), '..', '..'))
+        
         # Run the property tests
         result = subprocess.run([
             sys.executable, "-m", "pytest", 
@@ -78,6 +82,9 @@ def run_mocked_tests():
     print("🧪 Running mocked property tests...")
     
     try:
+        # Change to project root directory
+        os.chdir(os.path.join(os.path.dirname(__file__), '..', '..'))
+        
         result = subprocess.run([
             sys.executable, "-m", "pytest", 
             "tests/test_go_property.py::TestGoPropertyMocked",

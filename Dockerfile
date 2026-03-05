@@ -11,6 +11,8 @@ RUN apt-get update && apt-get install -y \
     g++ \
     make \
     cmake \
+    # Fortran compiler
+    gfortran \
     # Python development headers
     python3-dev \
     # Additional build dependencies
@@ -50,11 +52,15 @@ RUN echo "Building C extensions..." && \
 RUN echo "Building C++ extensions..." && \
     python build_cpp_ext.py
 
-RUN echo "Building Cython extensions..." && \
-    python build_cython.py
+# Skip Cython for now to test Fortran
+# RUN echo "Building Cython extensions..." && \
+#     python build_cython.py
 
 RUN echo "Building Rust extensions..." && \
     python build_rust_ext.py
+
+RUN echo "Building Fortran extensions..." && \
+    python build_fortran_ext.py
 
 # Set environment variables for optimal performance
 ENV PYTHONPATH=/app

@@ -1,31 +1,39 @@
-# Python Extension Benchmark Framework
+# Multi-Language Python Extension Benchmark Framework
 
-A comprehensive benchmarking framework for comparing performance across multiple Python extension implementations (Pure Python, NumPy, C, C++, Cython, Rust) using identical algorithms and statistical analysis.
+A comprehensive benchmarking framework for comparing performance across 12 different Python extension implementations including Pure Python, NumPy, C, C++, Cython, Rust, Fortran, Julia, Go, Zig, Nim, and Kotlin using identical algorithms and statistical analysis.
 
 ## 🎯 Project Overview
 
-This project provides quantitative performance comparisons between different Python extension technologies by implementing identical computational tasks in multiple languages and measuring their execution time, memory usage, and parallel processing capabilities.
+This project provides quantitative performance comparisons between different Python extension technologies by implementing identical computational tasks in 12 different languages and measuring their execution time, memory usage, and parallel processing capabilities.
 
 ### Key Features
 
-- **Multi-language implementations**: Pure Python, NumPy, C, C++, Cython, Rust
+- **12 language implementations**: Pure Python, NumPy, C, C++, Cython, Rust, Fortran, Julia, Go, Zig, Nim, Kotlin
 - **Comprehensive scenarios**: Numeric computation, memory operations, parallel processing
-- **Statistical rigor**: 100 measurement runs with warmup cycles and statistical analysis
+- **Statistical rigor**: Multiple measurement runs with warmup cycles and statistical analysis
 - **Output validation**: Ensures all implementations produce identical results
 - **Multiple output formats**: JSON, CSV, and visual graphs
-- **Docker environment**: Reproducible benchmarking environment
+- **Docker environment**: Reproducible benchmarking environment with all 12 languages
 - **Automated testing**: Property-based testing with Hypothesis
+- **Error handling**: Graceful handling of missing implementations and build failures
+- **Performance analysis**: Comprehensive performance profiling and language characteristics analysis
 
 ### Supported Languages & Technologies
 
-| Language/Tool | Binding Method | Memory Safety | Learning Curve | Primary Use Case |
-|---------------|----------------|---------------|----------------|------------------|
-| Pure Python | Native | High (GC) | Low | Baseline reference |
-| NumPy | Native | High | Low | Vectorized operations |
-| C | Python C API | Low | High | Maximum performance |
-| C++ | pybind11 | Low-Medium | High | Existing C++ codebases |
-| Cython | Cython compiler | Medium | Medium | Gradual optimization |
-| Rust | PyO3 | Highest | Medium-High | Safe high performance |
+| Language/Tool | Binding Method | Memory Safety | Learning Curve | Primary Use Case | Status |
+|---------------|----------------|---------------|----------------|------------------|---------|
+| Pure Python | Native | High (GC) | Low | Baseline reference | ✅ Ready |
+| NumPy | Native | High | Low | Vectorized operations | ✅ Ready |
+| C | Python C API | Low | High | Maximum performance | ✅ Ready |
+| C++ | pybind11 | Low-Medium | High | Existing C++ codebases | ✅ Ready |
+| Cython | Cython compiler | Medium | Medium | Gradual optimization | ⚠️ Build required |
+| Rust | PyO3 | Highest | Medium-High | Safe high performance | ✅ Ready |
+| Fortran | f2py | Low | High | Scientific computing | ⚠️ Build required |
+| Julia | PyCall/PythonCall | High | Medium | Scientific computing | ⚠️ Setup required |
+| Go | cgo + ctypes | Medium | Medium | Concurrent processing | ✅ Ready |
+| Zig | C ABI + ctypes | High | Medium-High | Systems programming | ✅ Ready |
+| Nim | nimpy | Medium | Medium | Python-like syntax | ✅ Ready (fallback) |
+| Kotlin | Kotlin/Native | High | Medium | JVM ecosystem | ✅ Ready (fallback) |
 
 ## 📁 Project Structure
 
@@ -77,6 +85,16 @@ benchmark/
 │   ├── functions.nim    # Nim function implementations
 │   ├── __init__.py      # Python integration layer
 │   └── setup.py         # Build configuration
+├── kotlin_ext/          # Kotlin/Native implementations
+│   ├── functions.kt     # Kotlin function implementations
+│   ├── __init__.py      # Python integration layer
+│   └── build.gradle.kts # Build configuration
+├── fortran_ext/         # Fortran implementations
+│   ├── numeric.f90      # Fortran numeric algorithms
+│   ├── memory.f90       # Fortran memory operations
+│   ├── parallel.f90     # Fortran parallel processing
+│   ├── __init__.py      # Python integration layer
+│   └── setup.py         # Build configuration
 ├── runner/              # Benchmark execution framework
 │   ├── benchmark.py     # Main benchmark runner
 │   ├── scenarios.py     # Scenario definitions
@@ -97,16 +115,21 @@ scripts/                 # Build and utility scripts
 │   ├── build_go_ext.py
 │   ├── build_zig_ext.py
 │   ├── build_nim_ext.py
-│   └── ...
+│   ├── build_kotlin_ext.py
+│   ├── build_fortran_ext.py
+│   └── build_rust_ext.py
 ├── test/                # Test and validation scripts
 │   ├── run_julia_property_tests.py
 │   ├── run_go_property_tests.py
 │   ├── test_julia_structure.py
-│   └── ...
+│   ├── docker_integration_test.py
+│   └── validate_julia_ext.py
 └── demo/                # Demo scripts
     └── demo_error_handling.py
 tests/                   # Test suite
 ├── test_*.py            # Unit and integration tests
+├── test_final_integration.py  # Final integration tests
+├── test_multi_language_*.py   # Multi-language tests
 └── conftest.py          # Pytest configuration
 docs/                    # Documentation
 .kiro/                   # Kiro IDE specifications
@@ -120,10 +143,16 @@ docs/                    # Documentation
 ### Prerequisites
 
 - Python 3.9+ 
-- Docker and Docker Compose (recommended)
+- Docker and Docker Compose (recommended for full 12-language support)
 - C/C++ compiler (gcc/clang)
 - Rust toolchain (for Rust extensions)
 - CMake (for C++ extensions)
+- Julia 1.9+ (for Julia extensions)
+- Go 1.21+ (for Go extensions)
+- Zig 0.11+ (for Zig extensions)
+- Nim 2.0+ (for Nim extensions)
+- Kotlin/Native 1.9+ (for Kotlin extensions)
+- Fortran compiler (gfortran, for Fortran extensions)
 
 ### Installation
 
@@ -147,7 +176,7 @@ docker-compose up test
 # Install Python dependencies
 pip install -r requirements.txt
 
-# Build all extensions
+# Build all extensions (some may require additional setup)
 python scripts/build/build_c_ext.py
 python scripts/build/build_cpp_ext.py
 python scripts/build/build_cython.py
@@ -156,9 +185,14 @@ python scripts/build/build_julia_ext.py
 python scripts/build/build_go_ext.py
 python scripts/build/build_zig_ext.py
 python scripts/build/build_nim_ext.py
+python scripts/build/build_kotlin_ext.py
+python scripts/build/build_fortran_ext.py
 
 # Run tests to verify installation
 pytest tests/ -v
+
+# Run final integration tests
+pytest tests/test_final_integration.py -v
 ```
 
 ### Running Benchmarks
@@ -187,10 +221,10 @@ from benchmark.runner.scenarios import NumericScenario, MemoryScenario, Parallel
 
 runner = BenchmarkRunner()
 
-# Run specific scenario
+# Run individual scenarios
 numeric_results = runner.run_scenario(
     NumericScenario(),
-    implementations=['python', 'numpy', 'c_ext', 'rust_ext']
+    implementations=['python', 'numpy_impl', 'c_ext', 'rust_ext', 'go_ext', 'zig_ext']
 )
 ```
 
@@ -200,9 +234,12 @@ numeric_results = runner.run_scenario(
 # Run demo with error handling
 python demo_error_handling.py
 
-# Run specific tests
-pytest tests/test_scenarios.py -v
-pytest tests/test_end_to_end_integration.py -v
+# Run comprehensive multi-language tests
+pytest tests/test_multi_language_integration.py -v
+pytest tests/test_final_integration.py -v
+
+# Run Docker integration tests
+python scripts/test/docker_integration_test.py
 ```
 
 ## 📊 Benchmark Scenarios
@@ -254,10 +291,16 @@ Results are saved in three formats:
 
 **Typical Performance Rankings** (fastest to slowest):
 1. **C/C++**: 10-100x faster than Python for CPU-intensive tasks
-2. **Rust**: Similar to C/C++, with memory safety guarantees
-3. **Cython**: 5-50x faster, depends on optimization level
-4. **NumPy**: 5-20x faster for vectorizable operations
-5. **Pure Python**: Baseline (1.0x)
+2. **Rust**: Similar to C/C++, with memory safety guarantees  
+3. **Zig**: C-level performance with compile-time safety
+4. **Go**: Good performance with excellent concurrency
+5. **Nim**: High performance with Python-like syntax
+6. **Cython**: 5-50x faster, depends on optimization level
+7. **Julia**: Excellent for scientific computing (JIT compilation)
+8. **Kotlin/Native**: Moderate performance, JVM ecosystem benefits
+9. **Fortran**: Excellent for numerical computations
+10. **NumPy**: 5-20x faster for vectorizable operations
+11. **Pure Python**: Baseline (1.0x)
 
 #### When to Use Each Implementation
 
@@ -276,10 +319,30 @@ Results are saved in three formats:
 - You need a balance of performance and development speed
 - You're working with existing Python codebases
 
+**Choose Go** when:
+- You need excellent concurrency and parallelism
+- You want fast compilation and deployment
+- You're building network services or distributed systems
+
+**Choose Zig** when:
+- You need C-level performance with better safety
+- You want manual memory management with compile-time checks
+- You're working on systems programming
+
+**Choose Julia** when:
+- You're doing scientific computing or data analysis
+- You need high performance with dynamic features
+- You want to avoid the two-language problem
+
 **Choose NumPy** when:
 - Your algorithms can be vectorized
 - You're working with numerical data
 - You want good performance with minimal code changes
+
+**Choose Kotlin/Native** when:
+- You want to leverage JVM ecosystem knowledge
+- You need interoperability with existing Kotlin/Java code
+- You prefer modern language features with good tooling
 
 #### Red Flags in Results
 

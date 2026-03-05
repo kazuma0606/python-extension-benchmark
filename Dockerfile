@@ -39,6 +39,13 @@ ENV PATH="/root/.juliaup/bin:${PATH}"
 # Verify Julia installation
 RUN julia --version
 
+# Install Go
+RUN curl -fsSL https://go.dev/dl/go1.21.5.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+# Verify Go installation
+RUN go version
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -71,6 +78,9 @@ RUN echo "Building Fortran extensions..." && \
 
 RUN echo "Building Julia extensions..." && \
     python build_julia_ext.py
+
+RUN echo "Building Go extensions..." && \
+    python build_go_ext.py
 
 # Set environment variables for optimal performance
 ENV PYTHONPATH=/app

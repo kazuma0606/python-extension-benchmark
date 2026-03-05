@@ -46,6 +46,14 @@ ENV PATH="/usr/local/go/bin:${PATH}"
 # Verify Go installation
 RUN go version
 
+# Install Zig
+RUN curl -fsSL https://ziglang.org/download/0.15.2/zig-linux-x86_64-0.15.2.tar.xz | tar -C /usr/local -xJf - && \
+    ln -s /usr/local/zig-linux-x86_64-0.15.2/zig /usr/local/bin/zig
+ENV PATH="/usr/local/zig-linux-x86_64-0.15.2:${PATH}"
+
+# Verify Zig installation
+RUN zig version
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -81,6 +89,9 @@ RUN echo "Building Julia extensions..." && \
 
 RUN echo "Building Go extensions..." && \
     python build_go_ext.py
+
+RUN echo "Building Zig extensions..." && \
+    python build_zig_ext.py
 
 # Set environment variables for optimal performance
 ENV PYTHONPATH=/app

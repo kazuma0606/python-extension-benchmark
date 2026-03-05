@@ -1,9 +1,9 @@
 """
 NumPy FFI implementation for benchmark system.
 
-This module provides NumPy-optimized functions accessible via FFI (ctypes).
+This module provides NumPy-based functions accessible via FFI (ctypes).
 """
 
-from .ffi_wrapper import NumpyFFI
+from .ffi_wrapper import NumPyFFI
 
-__all__ = ['NumpyFFI']
+__all__ = ['NumPyFFI']

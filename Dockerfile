@@ -61,6 +61,22 @@ ENV PATH="/root/.nimble/bin:${PATH}"
 # Verify Nim installation
 RUN nim --version
 
+# Install Kotlin/Native
+RUN curl -fsSL https://github.com/JetBrains/kotlin/releases/download/v1.9.21/kotlin-native-linux-x86_64-1.9.21.tar.gz | tar -C /usr/local -xzf - && \
+    ln -s /usr/local/kotlin-native-linux-x86_64-1.9.21/bin/kotlinc-native /usr/local/bin/kotlinc-native && \
+    ln -s /usr/local/kotlin-native-linux-x86_64-1.9.21/bin/kotlin /usr/local/bin/kotlin
+ENV PATH="/usr/local/kotlin-native-linux-x86_64-1.9.21/bin:${PATH}"
+
+# Install Gradle
+RUN curl -fsSL https://services.gradle.org/distributions/gradle-8.5-bin.zip -o gradle.zip && \
+    unzip gradle.zip -d /usr/local && \
+    ln -s /usr/local/gradle-8.5/bin/gradle /usr/local/bin/gradle && \
+    rm gradle.zip
+ENV PATH="/usr/local/gradle-8.5/bin:${PATH}"
+
+# Verify Kotlin/Native and Gradle installation
+RUN kotlin -version && gradle --version
+
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -102,6 +118,9 @@ RUN echo "Building Zig extensions..." && \
 
 RUN echo "Building Nim extensions..." && \
     python scripts/build/build_nim_ext.py
+
+RUN echo "Building Kotlin extensions..." && \
+    python scripts/build/build_kotlin_ext.py
 
 # Set environment variables for optimal performance
 ENV PYTHONPATH=/app

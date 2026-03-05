@@ -237,38 +237,56 @@ Julia、Go、Zig、Nim、Kotlinの5つの追加言語実装をPython拡張ベン
 
 ### Phase 2E: Kotlin拡張実装
 
-- [ ] 5. Kotlin/Native環境セットアップ
+- [x] 5. Kotlin/Native環境セットアップ
+
+
+
+
+
   - DockerfileにKotlin/Native環境を追加
   - Gradleビルドシステムの構築
   - C ABI互換性の確認
   - _要件: 7.1, 7.2_
 
-- [ ] 5.1 Kotlin数値計算モジュールの実装
+- [x] 5.1 Kotlin数値計算モジュールの実装
+
+
   - find_primes関数をKotlinで実装（効率的なアルゴリズム）
   - matrix_multiply関数をKotlinで実装（行列演算）
   - _要件: 5.2, 5.3_
 
-- [ ] 5.2 Kotlinメモリ操作モジュールの実装
+- [x] 5.2 Kotlinメモリ操作モジュールの実装
+
   - sort_array関数をKotlinで実装（標準ライブラリ使用）
   - filter_array関数をKotlinで実装（関数型プログラミング活用）
   - _要件: 5.4_
 
-- [ ] 5.3 Kotlin並列処理モジュールの実装
+- [x] 5.3 Kotlin並列処理モジュールの実装
+
   - parallel_compute関数をKotlinで実装（コルーチン使用）
   - Kotlinのコルーチンを活用した並行処理
   - _要件: 5.5_
 
-- [ ] 5.4 KotlinとPythonの統合
+- [x] 5.4 KotlinとPythonの統合
+
+
   - C ABI互換の共有ライブラリ作成
   - ctypesによるPython統合
   - Kotlin/Nativeの特性を活かした統合
   - _要件: 5.1, 9.1_
 
-- [ ]* 5.5 Kotlinプロパティテストの実装
+- [x] 5.5 Kotlinプロパティテストの実装
+
+
+
+
+
   - **プロパティ1: 関数シグネチャの統一性**
   - **検証: 要件 5.1**
 
-- [ ] 5.6 Kotlinビルドスクリプトの作成
+- [x] 5.6 Kotlinビルドスクリプトの作成
+
+
   - build_kotlin_ext.pyスクリプト作成
   - Gradleによるビルド自動化
   - 共有ライブラリの自動配置

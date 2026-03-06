@@ -8,16 +8,12 @@ to a shared library for FFI access via ctypes.
 
 import numpy as np
 cimport numpy as cnp
-from libc.stdlib cimport malloc, free
+from libc.stdlib cimport malloc, free, qsort
 from libc.math cimport sqrt
 import cython
 
 # Initialize NumPy C API
 cnp.import_array()
-
-# C function declarations for FFI interface
-cdef extern from "Python.h":
-    pass
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -97,89 +93,34 @@ cdef double* _matrix_multiply_impl(double* a, int rows_a, int cols_a,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
+cdef int _compare_int(const void* a, const void* b) noexcept nogil:
+    """Comparison function for qsort."""
+    cdef int ai = (<const int*>a)[0]
+    cdef int bi = (<const int*>b)[0]
+    if ai < bi:
+        return -1
+    elif ai > bi:
+        return 1
+    return 0
+
 cdef int* _sort_array_impl(int* arr, int size):
-    """Internal Cython implementation of array sorting."""
+    """Internal Cython implementation of array sorting using stdlib qsort."""
     if size <= 0:
         return NULL
-    
+
     # Allocate result array
     cdef int* result = <int*>malloc(size * sizeof(int))
     if result == NULL:
         return NULL
-    
+
     # Copy input array
     cdef int i
     for i in range(size):
         result[i] = arr[i]
-    
-    # Simple quicksort implementation
-    _quicksort(result, 0, size - 1)
-    
-    return result
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef void _quicksort(int* arr, int low, int high):
-    """Quicksort implementation."""
-    if low < high:
-        cdef int pi = _partition(arr, low, high)
-        _quicksort(arr, low, pi - 1)
-        _quicksort(arr, pi + 1, high)
+    # Use stdlib qsort (introsort internally, O(n log n) guaranteed)
+    qsort(result, size, sizeof(int), _compare_int)
 
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef int _partition(int* arr, int low, int high):
-    """Partition function for quicksort."""
-    cdef int pivot = arr[high]
-    cdef int i = low - 1
-    cdef int j, temp
-    
-    for j in range(low, high):
-        if arr[j] <= pivot:
-            i += 1
-            temp = arr[i]
-            arr[i] = arr[j]
-            arr[j] = temp
-    
-    temp = arr[i + 1]
-    arr[i + 1] = arr[high]
-    arr[high] = temp
-    
-    return i + 1
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-cdef int* _filter_array_impl(int* arr, int size, int threshold, int* result_size):
-    """Internal Cython implementation of array filtering."""
-    if size <= 0:
-        result_size[0] = 0
-        return NULL
-    
-    # Count elements >= threshold
-    cdef int count = 0
-    cdef int i
-    for i in range(size):
-        if arr[i] >= threshold:
-            count += 1
-    
-    if count == 0:
-        result_size[0] = 0
-        return NULL
-    
-    # Allocate result array
-    cdef int* result = <int*>malloc(count * sizeof(int))
-    if result == NULL:
-        result_size[0] = 0
-        return NULL
-    
-    # Fill result array
-    cdef int idx = 0
-    for i in range(size):
-        if arr[i] >= threshold:
-            result[idx] = arr[i]
-            idx += 1
-    
-    result_size[0] = count
     return result
 
 @cython.boundscheck(False)
@@ -198,30 +139,120 @@ cdef double _parallel_compute_impl(double* data, int size, int num_threads):
     
     return result
 
-# C-compatible FFI interface functions
-cdef public int* find_primes_ffi(int n, int* count):
-    """FFI interface for prime finding."""
-    return _find_primes_impl(n, count)
+# API functions that can be called from Python
+def find_primes_py(int n):
+    """Python-callable wrapper for prime finding."""
+    cdef int count
+    cdef int* result = _find_primes_impl(n, &count)
+    if result == NULL:
+        return []
+    
+    # Convert to Python list
+    py_result = []
+    for i in range(count):
+        py_result.append(result[i])
+    
+    free(result)
+    return py_result
 
-cdef public double* matrix_multiply_ffi(double* a, int rows_a, int cols_a,
-                                        double* b, int rows_b, int cols_b,
-                                        int* result_rows, int* result_cols):
-    """FFI interface for matrix multiplication."""
-    return _matrix_multiply_impl(a, rows_a, cols_a, b, rows_b, cols_b, result_rows, result_cols)
+def matrix_multiply_py(a_list, b_list):
+    """Python-callable wrapper for matrix multiplication."""
+    # Convert Python lists to C arrays
+    cdef int rows_a = len(a_list)
+    cdef int cols_a = len(a_list[0]) if rows_a > 0 else 0
+    cdef int rows_b = len(b_list)
+    cdef int cols_b = len(b_list[0]) if rows_b > 0 else 0
+    
+    if cols_a != rows_b:
+        return []
+    
+    # Allocate C arrays
+    cdef double* a = <double*>malloc(rows_a * cols_a * sizeof(double))
+    cdef double* b = <double*>malloc(rows_b * cols_b * sizeof(double))
+    
+    if a == NULL or b == NULL:
+        if a != NULL: free(a)
+        if b != NULL: free(b)
+        return []
+    
+    # Fill C arrays
+    cdef int i, j
+    for i in range(rows_a):
+        for j in range(cols_a):
+            a[i * cols_a + j] = a_list[i][j]
+    
+    for i in range(rows_b):
+        for j in range(cols_b):
+            b[i * cols_b + j] = b_list[i][j]
+    
+    # Perform multiplication
+    cdef int result_rows, result_cols
+    cdef double* result = _matrix_multiply_impl(a, rows_a, cols_a, b, rows_b, cols_b, &result_rows, &result_cols)
+    
+    free(a)
+    free(b)
+    
+    if result == NULL:
+        return []
+    
+    # Convert to Python list
+    py_result = []
+    for i in range(result_rows):
+        row = []
+        for j in range(result_cols):
+            row.append(result[i * result_cols + j])
+        py_result.append(row)
+    
+    free(result)
+    return py_result
 
-cdef public int* sort_array_ffi(int* arr, int size):
-    """FFI interface for array sorting."""
-    return _sort_array_impl(arr, size)
+def sort_array_py(arr_list):
+    """Python-callable wrapper for array sorting."""
+    cdef int size = len(arr_list)
+    if size <= 0:
+        return []
+    
+    # Allocate C array
+    cdef int* arr = <int*>malloc(size * sizeof(int))
+    if arr == NULL:
+        return []
+    
+    # Fill C array
+    for i in range(size):
+        arr[i] = arr_list[i]
+    
+    # Sort
+    cdef int* result = _sort_array_impl(arr, size)
+    free(arr)
+    
+    if result == NULL:
+        return []
+    
+    # Convert to Python list
+    py_result = []
+    for i in range(size):
+        py_result.append(result[i])
+    
+    free(result)
+    return py_result
 
-cdef public int* filter_array_ffi(int* arr, int size, int threshold, int* result_size):
-    """FFI interface for array filtering."""
-    return _filter_array_impl(arr, size, threshold, result_size)
-
-cdef public double parallel_compute_ffi(double* data, int size, int num_threads):
-    """FFI interface for parallel computation."""
-    return _parallel_compute_impl(data, size, num_threads)
-
-cdef public void free_memory_ffi(void* ptr):
-    """FFI interface for memory deallocation."""
-    if ptr != NULL:
-        free(ptr)
+def parallel_compute_py(data_list, int num_threads=2):
+    """Python-callable wrapper for parallel computation."""
+    cdef int size = len(data_list)
+    if size <= 0:
+        return 0.0
+    
+    # Allocate C array
+    cdef double* data = <double*>malloc(size * sizeof(double))
+    if data == NULL:
+        return 0.0
+    
+    # Fill C array
+    for i in range(size):
+        data[i] = data_list[i]
+    
+    # Compute
+    cdef double result = _parallel_compute_impl(data, size, num_threads)
+    free(data)
+    
+    return result

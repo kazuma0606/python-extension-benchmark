@@ -35,12 +35,9 @@ println("Source: $julia_file")
 println("Target: $lib_path")
 
 try
-    # Create shared library using PackageCompiler
-    # Note: This requires Julia 1.9+ for @ccallable support in PackageCompiler
-    create_library(julia_file, lib_path; 
+    # Create shared library using PackageCompiler 2.x API
+    create_library(julia_file, lib_path;
                    lib_name="juliafunctions",
-                   precompile_execution_file=nothing,
-                   precompile_statements_file=nothing,
                    incremental=false,
                    filter_stdlibs=true)
     

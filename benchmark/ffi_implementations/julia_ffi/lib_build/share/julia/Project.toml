@@ -1,0 +1,5 @@
+name = "JuliaFFI"
+uuid = "12345678-1234-1234-1234-123456789abc"
+
+[deps]
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"

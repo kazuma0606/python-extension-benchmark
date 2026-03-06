@@ -28,16 +28,19 @@ RUN apt-get update && apt-get install -y \
     wget \
     # Library development headers for FFI
     libffi-dev \
+    # Java for Kotlin/Native (use default-jdk for compatibility)
+    default-jdk \
     # Clean up apt cache
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv (Python package manager for FFI environment)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
-ENV PATH="/root/.cargo/bin:${PATH}"
 
 # Install Rust (for Rust extensions and FFI)
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Update PATH for uv and Rust
+ENV PATH="/root/.local/bin:/root/.cargo/bin:${PATH}"
 
 # Verify Rust installation
 RUN rustc --version && cargo --version
@@ -77,8 +80,7 @@ RUN nim --version && \
 
 # Install Kotlin/Native (for Kotlin extensions and FFI)
 RUN curl -fsSL https://github.com/JetBrains/kotlin/releases/download/v1.9.21/kotlin-native-linux-x86_64-1.9.21.tar.gz | tar -C /usr/local -xzf - && \
-    ln -s /usr/local/kotlin-native-linux-x86_64-1.9.21/bin/kotlinc-native /usr/local/bin/kotlinc-native && \
-    ln -s /usr/local/kotlin-native-linux-x86_64-1.9.21/bin/kotlin /usr/local/bin/kotlin
+    ln -s /usr/local/kotlin-native-linux-x86_64-1.9.21/bin/kotlinc-native /usr/local/bin/kotlinc-native
 ENV PATH="/usr/local/kotlin-native-linux-x86_64-1.9.21/bin:${PATH}"
 
 # Install Gradle (for Kotlin builds)
@@ -89,7 +91,7 @@ RUN curl -fsSL https://services.gradle.org/distributions/gradle-8.5-bin.zip -o g
 ENV PATH="/usr/local/gradle-8.5/bin:${PATH}"
 
 # Verify Kotlin/Native and Gradle installation
-RUN kotlin -version && gradle --version
+RUN kotlinc-native -version && gradle --version
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
@@ -163,17 +165,19 @@ RUN echo "Building Kotlin extensions..." && \
 # Build FFI shared libraries
 # Activate uv environment for FFI builds
 ENV VIRTUAL_ENV=/app/.venv
-ENV PATH="/app/.venv/bin:$PATH"
+ENV PATH="/app/.venv/bin:/root/.local/bin:/root/.cargo/bin:/root/.juliaup/bin:/usr/local/go/bin:/usr/local/zig-linux-x86_64-0.11.0:/root/.nimble/bin:/usr/local/kotlin-native-linux-x86_64-1.9.21/bin:/usr/local/gradle-8.5/bin:$PATH"
 
 # 10. Build C FFI shared library
 RUN echo "Building C FFI shared library..." && \
     cd benchmark/ffi_implementations/c_ffi && \
+    rm -f *.dll *.so && \
     make clean && make || \
     echo "⚠️ C FFI build failed, continuing..."
 
 # 11. Build C++ FFI shared library
 RUN echo "Building C++ FFI shared library..." && \
     cd benchmark/ffi_implementations/cpp_ffi && \
+    rm -f *.dll *.so && \
     make clean && make || \
     echo "⚠️ C++ FFI build failed, continuing..."
 
@@ -192,44 +196,51 @@ RUN echo "Building Cython FFI shared library..." && \
 # 14. Build Rust FFI shared library
 RUN echo "Building Rust FFI shared library..." && \
     cd benchmark/ffi_implementations/rust_ffi && \
-    cargo build --release && \
-    cp target/release/librust_ffi.so . || \
+    rm -f *.dll *.so && \
+    cargo clean && cargo build --release && \
+    cp target/release/librustfunctions.so . || \
     echo "⚠️ Rust FFI build failed, continuing..."
 
 # 15. Build Fortran FFI shared library
 RUN echo "Building Fortran FFI shared library..." && \
     cd benchmark/ffi_implementations/fortran_ffi && \
+    rm -f *.dll *.so && \
     make clean && make || \
     echo "⚠️ Fortran FFI build failed, continuing..."
 
 # 16. Build Julia FFI shared library
 RUN echo "Building Julia FFI shared library..." && \
     cd benchmark/ffi_implementations/julia_ffi && \
+    rm -f *.dll lib_build/bin/*.dll && \
     julia simple_build.jl || \
     echo "⚠️ Julia FFI build failed, continuing..."
 
 # 17. Build Go FFI shared library
 RUN echo "Building Go FFI shared library..." && \
     cd benchmark/ffi_implementations/go_ffi && \
+    rm -f *.dll *.so && \
     make clean && make || \
     echo "⚠️ Go FFI build failed, continuing..."
 
 # 18. Build Zig FFI shared library
 RUN echo "Building Zig FFI shared library..." && \
     cd benchmark/ffi_implementations/zig_ffi && \
-    zig build-lib -dynamic -O ReleaseFast functions.zig || \
+    rm -f *.dll *.so && \
+    zig build-lib -dynamic -O ReleaseFast functions.zig -femit-bin=libfunctions.so || \
     echo "⚠️ Zig FFI build failed, continuing..."
 
 # 19. Build Nim FFI shared library
 RUN echo "Building Nim FFI shared library..." && \
     cd benchmark/ffi_implementations/nim_ffi && \
-    nim c --app:lib --out:libnimfunctions.so functions.nim || \
+    rm -f *.dll *.so && \
+    nim c --app:lib --out:libfunctions.so functions.nim || \
     echo "⚠️ Nim FFI build failed, continuing..."
 
 # 20. Build Kotlin FFI shared library
 RUN echo "Building Kotlin FFI shared library..." && \
     cd benchmark/ffi_implementations/kotlin_ffi && \
-    gradle build || \
+    rm -f *.dll *.so && \
+    gradle clean && gradle build -Ptarget=linux || \
     echo "⚠️ Kotlin FFI build failed, continuing..."
 
 # Set environment variables for optimal performance
@@ -242,7 +253,7 @@ ENV NUMBA_NUM_THREADS=4
 ENV MKL_NUM_THREADS=4
 ENV JULIA_NUM_THREADS=4
 
-# Set library path for FFI shared libraries
+# Set library path for FFI shared libraries (Linux .so files)
 ENV LD_LIBRARY_PATH="/app/benchmark/ffi_implementations/c_ffi:/app/benchmark/ffi_implementations/cpp_ffi:/app/benchmark/ffi_implementations/rust_ffi:/app/benchmark/ffi_implementations/fortran_ffi:/app/benchmark/ffi_implementations/julia_ffi:/app/benchmark/ffi_implementations/go_ffi:/app/benchmark/ffi_implementations/zig_ffi:/app/benchmark/ffi_implementations/nim_ffi:/app/benchmark/ffi_implementations/kotlin_ffi:${LD_LIBRARY_PATH}"
 
 # Create results directory
@@ -258,7 +269,7 @@ echo "Julia: $(julia --version 2>/dev/null || echo "Not available")"\n\
 echo "Go: $(go version 2>/dev/null || echo "Not available")"\n\
 echo "Zig: $(zig version 2>/dev/null || echo "Not available")"\n\
 echo "Nim: $(nim --version 2>/dev/null | head -1 || echo "Not available")"\n\
-echo "Kotlin: $(kotlin -version 2>/dev/null || echo "Not available")"\n\
+echo "Kotlin: $(kotlinc-native -version 2>/dev/null || echo "Not available")"\n\
 echo ""\n\
 echo "=== Testing Extension Imports ==="\n\
 python -c "import benchmark.python; print(\"✓ Python implementation\")" 2>/dev/null || echo "✗ Python implementation"\n\

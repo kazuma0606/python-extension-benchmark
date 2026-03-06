@@ -12,8 +12,6 @@
 
 #ifndef GO_CGO_GOSTRING_TYPEDEF
 typedef struct { const char *p; ptrdiff_t n; } _GoString_;
-extern size_t _GoStringLen(_GoString_ s);
-extern const char *_GoStringPtr(_GoString_ s);
 #endif
 
 #endif
@@ -46,15 +44,9 @@ typedef size_t GoUintptr;
 typedef float GoFloat32;
 typedef double GoFloat64;
 #ifdef _MSC_VER
-#if !defined(__cplusplus) || _MSVC_LANG <= 201402L
 #include <complex.h>
 typedef _Fcomplex GoComplex64;
 typedef _Dcomplex GoComplex128;
-#else
-#include <complex>
-typedef std::complex<float> GoComplex64;
-typedef std::complex<double> GoComplex128;
-#endif
 #else
 typedef float _Complex GoComplex64;
 typedef double _Complex GoComplex128;
@@ -82,11 +74,11 @@ typedef struct { void *data; GoInt len; GoInt cap; } GoSlice;
 extern "C" {
 #endif
 
-extern __declspec(dllexport) void find_primes(int n, int* result, int* count);
-extern __declspec(dllexport) void matrix_multiply(double* a, int rows_a, int cols_a, double* b, int rows_b, int cols_b, double* result);
-extern __declspec(dllexport) void sort_array(int* arr, int length);
-extern __declspec(dllexport) void filter_array(int* arr, int length, int threshold, int* result, int* count);
-extern __declspec(dllexport) double parallel_compute(double* data, int length, int num_threads);
+extern void find_primes(int n, int* result, int* count);
+extern void matrix_multiply(double* a, int rows_a, int cols_a, double* b, int rows_b, int cols_b, double* result);
+extern void sort_array(int* arr, int length);
+extern void filter_array(int* arr, int length, int threshold, int* result, int* count);
+extern double parallel_compute(double* data, int length, int num_threads);
 
 #ifdef __cplusplus
 }

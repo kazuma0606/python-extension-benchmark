@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  # FFI Benchmark Service - No volume mounts for clean testing
+  ffi-benchmark-clean:
+    build:
+      context: .
+      dockerfile: Dockerfile.ffi
+    container_name: py-benchmark-ffi-clean
+    environment:
+      # Performance optimization
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      # Thread limits for consistent benchmarking
+      - OMP_NUM_THREADS=4
+      - NUMBA_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - JULIA_NUM_THREADS=4
+      # FFI library paths
+      - LD_LIBRARY_PATH=/app/benchmark/ffi_implementations/c_ffi:/app/benchmark/ffi_implementations/cpp_ffi:/app/benchmark/ffi_implementations/rust_ffi:/app/benchmark/ffi_implementations/fortran_ffi:/app/benchmark/ffi_implementations/julia_ffi:/app/benchmark/ffi_implementations/go_ffi:/app/benchmark/ffi_implementations/zig_ffi:/app/benchmark/ffi_implementations/nim_ffi:/app/benchmark/ffi_implementations/kotlin_ffi
+      # uv environment
+      - VIRTUAL_ENV=/app/.venv
+      # Complete PATH with all tools
+      - PATH=/app/.venv/bin:/root/.local/bin:/root/.cargo/bin:/root/.juliaup/bin:/usr/local/go/bin:/usr/local/zig-linux-x86_64-0.11.0:/root/.nimble/bin:/usr/local/kotlin-native-linux-x86_64-1.9.21/bin:/usr/local/gradle-8.5/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    working_dir: /app
+    command: ["health-check-ffi"]

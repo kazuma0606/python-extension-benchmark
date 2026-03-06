@@ -16,6 +16,7 @@ from benchmark.models import BenchmarkResult
 from benchmark.runner.ffi_visualizer import FFIVisualizer
 from benchmark.runner.ffi_statistical_analyzer import FFIStatisticalAnalyzer
 from benchmark.runner.ffi_technology_advisor import FFITechnologyAdvisor, UseCase, DevelopmentComplexity
+from benchmark.runner.ffi_summary_generator_jp import FFISummaryGeneratorJP
 
 
 class FFISummaryGenerator:
@@ -50,32 +51,9 @@ class FFISummaryGenerator:
         """
         print("🔄 Generating comprehensive FFI summary report...")
         
-        # Perform analyses
-        print("  📊 Running statistical analysis...")
-        statistical_report = self.statistical_analyzer.analyze_ffi_performance(results)
-        
-        print("  🎯 Generating technology recommendations...")
-        technology_matrix = self.technology_advisor.generate_technology_matrix(results)
-        
-        print("  📈 Creating visualizations...")
-        speedup_chart = self.visualizer.generate_speedup_comparison_chart(results)
-        distribution_chart = self.visualizer.generate_performance_distribution_chart(results)
-        characteristics_chart = self.visualizer.generate_language_characteristics_chart(results)
-        
-        # Generate report content
-        print("  📝 Generating report content...")
-        report_content = self._generate_report_content(
-            results, statistical_report, technology_matrix,
-            speedup_chart, distribution_chart, characteristics_chart
-        )
-        
-        # Write report
-        output_path = self.output_dir / filename
-        with open(output_path, 'w', encoding='utf-8') as f:
-            f.write(report_content)
-        
-        print(f"✅ FFI summary report generated: {output_path}")
-        return str(output_path)
+        # Use Japanese generator for consistency with existing format
+        jp_generator = FFISummaryGeneratorJP(output_dir=str(self.output_dir))
+        return jp_generator.generate_ffi_summary_jp(results, filename)
     
     def _generate_report_content(
         self,
@@ -624,12 +602,16 @@ FFI implementations provide substantial performance improvements that can justif
         return ''.join(formatted_notes)
     
     def _is_ffi_implementation(self, impl_name: str) -> bool:
-        """Check if implementation is FFI-based."""
+        """Check if implementation is FFI-based or extension-based (treated as equivalent)."""
         ffi_implementations = {
             "c_ffi", "cpp_ffi", "numpy_ffi", "cython_ffi", "rust_ffi",
             "fortran_ffi", "julia_ffi", "go_ffi", "zig_ffi", "nim_ffi", "kotlin_ffi"
         }
-        return impl_name in ffi_implementations
+        extension_implementations = {
+            "c_ext", "cpp_ext", "numpy_impl", "cython_ext", "rust_ext",
+            "fortran_ext", "julia_ext", "go_ext", "zig_ext", "nim_ext", "kotlin_ext"
+        }
+        return impl_name in ffi_implementations or impl_name in extension_implementations
 
 
 def main():

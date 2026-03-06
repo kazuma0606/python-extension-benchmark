@@ -10,8 +10,8 @@ services:
     volumes:
       # Mount results directory for output persistence
       - ./benchmark/results:/app/benchmark/results
-      # Mount source code for development (optional)
-      - ./benchmark:/app/benchmark:ro
+      # Mount source code for development (read-write for building)
+      - ./benchmark:/app/benchmark
       - ./tests:/app/tests:ro
       - ./scripts:/app/scripts:ro
     environment:
@@ -27,7 +27,8 @@ services:
       - LD_LIBRARY_PATH=/app/benchmark/ffi_implementations/c_ffi:/app/benchmark/ffi_implementations/cpp_ffi:/app/benchmark/ffi_implementations/rust_ffi:/app/benchmark/ffi_implementations/fortran_ffi:/app/benchmark/ffi_implementations/julia_ffi:/app/benchmark/ffi_implementations/go_ffi:/app/benchmark/ffi_implementations/zig_ffi:/app/benchmark/ffi_implementations/nim_ffi:/app/benchmark/ffi_implementations/kotlin_ffi
       # uv environment
       - VIRTUAL_ENV=/app/.venv
-      - PATH=/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+      # Complete PATH with all tools
+      - PATH=/app/.venv/bin:/root/.local/bin:/root/.cargo/bin:/root/.juliaup/bin:/usr/local/go/bin:/usr/local/zig-linux-x86_64-0.11.0:/root/.nimble/bin:/usr/local/kotlin-native-linux-x86_64-1.9.21/bin:/usr/local/gradle-8.5/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
     working_dir: /app
     command: ["health-check-ffi"]
     

@@ -18,7 +18,7 @@ try:
         'parallel_compute'
     ]
     
-except ImportError as e:
+except (ImportError, AttributeError) as e:
     # If the Rust extension is not built, provide a helpful error message
     import warnings
     warnings.warn(

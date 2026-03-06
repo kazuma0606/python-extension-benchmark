@@ -1,0 +1,31 @@
+# Makefile for Kotlin FFI C Fallback Implementation
+
+CC = gcc
+CFLAGS = -O3 -fPIC -shared -std=c99
+TARGET = libfunctions.dll
+SOURCE = functions_c_fallback.c
+
+# Windows specific settings
+ifeq ($(OS),Windows_NT)
+    TARGET = libfunctions.dll
+    CFLAGS += -D_WIN32
+else
+    UNAME_S := $(shell uname -s)
+    ifeq ($(UNAME_S),Linux)
+        TARGET = libfunctions.so
+    endif
+    ifeq ($(UNAME_S),Darwin)
+        TARGET = libfunctions.dylib
+        CFLAGS = -O3 -fPIC -shared -std=c99 -undefined dynamic_lookup
+    endif
+endif
+
+all: $(TARGET)
+
+$(TARGET): $(SOURCE)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SOURCE) -lm
+
+clean:
+	rm -f $(TARGET) *.o
+
+.PHONY: all clean

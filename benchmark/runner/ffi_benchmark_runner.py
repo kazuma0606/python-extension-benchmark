@@ -12,8 +12,8 @@ from pathlib import Path
 from typing import List, Optional
 from datetime import datetime
 
-# Add benchmark directory to path
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from benchmark.runner.benchmark import BenchmarkRunner
 from benchmark.runner.output import OutputWriter

@@ -99,8 +99,8 @@ def main():
     
     parser.add_argument(
         "--output-dir",
-        default="benchmark/results",
-        help="Output directory for the report (default: benchmark/results)"
+        default="docs",
+        help="Output directory for the report (default: docs)"
     )
     
     parser.add_argument(
@@ -138,8 +138,12 @@ def main():
         
         print(f"✅ Loaded {len(results)} benchmark results")
         
-        # Check for FFI results
-        ffi_results = [r for r in results if r.implementation_name.endswith('_ffi')]
+        # Check for FFI results (including extension implementations)
+        ffi_results = [r for r in results if (
+            r.implementation_name.endswith('_ffi') or 
+            r.implementation_name.endswith('_ext') or
+            r.implementation_name == 'numpy_impl'
+        ) and r.implementation_name != 'python']
         python_results = [r for r in results if r.implementation_name == 'python']
         
         if not ffi_results:
@@ -182,7 +186,8 @@ def main():
             speedups = []
             for ffi_result in ffi_results:
                 if (ffi_result.status == "SUCCESS" and 
-                    ffi_result.scenario_name in python_scenarios):
+                    ffi_result.scenario_name in python_scenarios and
+                    ffi_result.implementation_name != 'python'):
                     python_time = python_scenarios[ffi_result.scenario_name].mean_time
                     if python_time > 0:
                         speedup = python_time / ffi_result.mean_time

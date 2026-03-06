@@ -488,16 +488,21 @@ class FFIStatisticalAnalyzer:
         return recommendations
     
     def _is_ffi_implementation(self, impl_name: str) -> bool:
-        """Check if implementation is FFI-based."""
+        """Check if implementation is FFI-based or extension-based (treated as equivalent)."""
         ffi_implementations = {
             "c_ffi", "cpp_ffi", "numpy_ffi", "cython_ffi", "rust_ffi",
             "fortran_ffi", "julia_ffi", "go_ffi", "zig_ffi", "nim_ffi", "kotlin_ffi"
         }
-        return impl_name in ffi_implementations
+        extension_implementations = {
+            "c_ext", "cpp_ext", "numpy_impl", "cython_ext", "rust_ext",
+            "fortran_ext", "julia_ext", "go_ext", "zig_ext", "nim_ext", "kotlin_ext"
+        }
+        return impl_name in ffi_implementations or impl_name in extension_implementations
     
     def _get_language_name(self, impl_name: str) -> str:
         """Get language name from implementation name."""
         language_map = {
+            # FFI implementations
             "c_ffi": "C",
             "cpp_ffi": "C++",
             "numpy_ffi": "NumPy",
@@ -508,7 +513,19 @@ class FFIStatisticalAnalyzer:
             "go_ffi": "Go",
             "zig_ffi": "Zig",
             "nim_ffi": "Nim",
-            "kotlin_ffi": "Kotlin"
+            "kotlin_ffi": "Kotlin",
+            # Extension implementations
+            "c_ext": "C",
+            "cpp_ext": "C++",
+            "numpy_impl": "NumPy",
+            "cython_ext": "Cython",
+            "rust_ext": "Rust",
+            "fortran_ext": "Fortran",
+            "julia_ext": "Julia",
+            "go_ext": "Go",
+            "zig_ext": "Zig",
+            "nim_ext": "Nim",
+            "kotlin_ext": "Kotlin"
         }
         return language_map.get(impl_name, "Unknown")
 

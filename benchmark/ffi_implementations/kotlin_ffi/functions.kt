@@ -5,6 +5,8 @@
  * with C ABI compatibility for FFI integration with Python.
  */
 
+@file:OptIn(kotlin.experimental.ExperimentalNativeApi::class, kotlinx.cinterop.ExperimentalForeignApi::class)
+
 import kotlinx.cinterop.*
 import kotlin.math.sqrt
 import kotlin.native.concurrent.ThreadLocal

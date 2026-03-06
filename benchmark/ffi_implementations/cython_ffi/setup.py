@@ -1,8 +1,8 @@
 """
 Setup script for building Cython FFI shared library.
 
-This script compiles the Cython code into a shared library that can be
-accessed via ctypes FFI.
+This script compiles the Cython code into a Python extension module that can be
+imported and used directly from Python.
 """
 
 from setuptools import setup, Extension
@@ -11,27 +11,13 @@ import numpy
 import os
 import platform
 
-# Determine the output library name based on platform
-system = platform.system().lower()
-if system == 'windows':
-    library_name = 'libcythonfunctions.dll'
-elif system == 'darwin':
-    library_name = 'libcythonfunctions.dylib'
-else:
-    library_name = 'libcythonfunctions.so'
-
-# Get the directory where this setup.py is located
-current_dir = os.path.dirname(os.path.abspath(__file__))
-output_path = os.path.join(current_dir, library_name)
-
 # Define the extension
 extensions = [
     Extension(
         "cython_functions",
         ["functions.pyx"],
         include_dirs=[numpy.get_include()],
-        extra_compile_args=["-O3", "-ffast-math"],
-        extra_link_args=[],
+        extra_compile_args=["-O3"] if platform.system() != 'Windows' else ["/O2"],
         language="c"
     )
 ]

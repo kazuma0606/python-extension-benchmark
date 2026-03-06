@@ -140,13 +140,16 @@ class UVEnvironmentChecker:
         """
         issues = []
         
-        # Check if uv environment is active
-        if not self.is_uv_environment_active():
-            issues.append("uv virtual environment is not active")
+        # Check if we're in a virtual environment (either uv or regular venv)
+        in_venv = (hasattr(sys, 'real_prefix') or 
+                   (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix))
         
-        # Check if uv is installed
+        if not in_venv:
+            issues.append("No virtual environment detected (uv or venv)")
+        
+        # Check if uv is installed (optional if we're in a working venv)
         uv_version = self.get_uv_version()
-        if not uv_version:
+        if not uv_version and not in_venv:
             issues.append("uv is not installed or not in PATH")
         
         # Check required packages
@@ -155,8 +158,8 @@ class UVEnvironmentChecker:
         if missing_packages:
             issues.append(f"Missing required packages: {', '.join(missing_packages)}")
         
-        # Check for project files
-        if not self._find_uv_lock():
+        # Check for project files (optional if we're in a working environment)
+        if not self._find_uv_lock() and not in_venv:
             issues.append("uv.lock file not found in project directory")
         
         return len(issues) == 0, issues
@@ -251,6 +254,19 @@ def check_uv_environment() -> bool:
     is_valid, issues = checker.validate_environment()
     
     if not is_valid:
+        # Check if we're in any virtual environment as a fallback
+        in_venv = (hasattr(sys, 'real_prefix') or 
+                   (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix))
+        
+        if in_venv:
+            # If we're in a virtual environment, only check for critical issues
+            critical_issues = [issue for issue in issues 
+                             if "Missing required packages" in issue]
+            
+            if not critical_issues:
+                # We're in a working virtual environment, that's good enough
+                return True
+        
         print("\n" + "!" * 60)
         print("WARNING: UV ENVIRONMENT ISSUES DETECTED")
         print("!" * 60)

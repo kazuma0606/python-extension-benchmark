@@ -1,0 +1,48 @@
+[package]
+name = "windows-ffi-audit"
+version = "0.1.0"
+edition = "2021"
+description = "Windows FFI implementation audit and verification system"
+authors = ["FFI Benchmark Team"]
+
+[lib]
+name = "windows_ffi_audit"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "ffi-audit"
+path = "src/main.rs"
+
+[dependencies]
+# Core dependencies
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Python integration
+pyo3 = { version = "0.20", features = ["extension-module"] }
+
+# Unix-specific dependencies
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+# Windows-specific dependencies
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = [
+    "libloaderapi",
+    "errhandlingapi", 
+    "winbase",
+    "winerror",
+    "processthreadsapi",
+    "psapi"
+] }
+
+[dev-dependencies]
+proptest = "1.4"
+
+[features]
+default = []
+
+[build-dependencies]
+pyo3-build-config = "0.20"

@@ -1,0 +1,302 @@
+# Python Extension + FFI Benchmark Docker Environment - Multi-Language Support
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies for all build tools
+RUN apt-get update && apt-get install -y \
+    # C/C++ compiler and build tools
+    gcc \
+    g++ \
+    make \
+    cmake \
+    # Fortran compiler
+    gfortran \
+    # Python development headers
+    python3-dev \
+    # Additional build dependencies
+    build-essential \
+    pkg-config \
+    # Git for potential dependency installations
+    git \
+    # Curl for downloading language runtimes
+    curl \
+    # Unzip for extracting archives
+    unzip \
+    # Additional utilities
+    wget \
+    # Library development headers for FFI
+    libffi-dev \
+    # Clean up apt cache
+    && rm -rf /var/lib/apt/lists/*
+
+# Install uv (Python package manager for FFI environment)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Install Rust (for Rust extensions and FFI)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Verify Rust installation
+RUN rustc --version && cargo --version
+
+# Install Julia (for Julia extensions and FFI)
+RUN curl -fsSL https://install.julialang.org | sh -s -- --yes
+ENV PATH="/root/.juliaup/bin:${PATH}"
+
+# Verify Julia installation and install required packages
+RUN julia --version && \
+    julia -e 'using Pkg; Pkg.add(["PyCall", "PythonCall", "PackageCompiler"])'
+
+# Install Go (for Go extensions and FFI)
+RUN curl -fsSL https://go.dev/dl/go1.21.5.linux-amd64.tar.gz | tar -C /usr/local -xzf -
+ENV PATH="/usr/local/go/bin:${PATH}"
+ENV GOPATH="/root/go"
+ENV GOBIN="/root/go/bin"
+
+# Verify Go installation
+RUN go version
+
+# Install Zig (for Zig extensions and FFI)
+RUN curl -fsSL https://ziglang.org/download/0.11.0/zig-linux-x86_64-0.11.0.tar.xz | tar -C /usr/local -xJf - && \
+    ln -s /usr/local/zig-linux-x86_64-0.11.0/zig /usr/local/bin/zig
+ENV PATH="/usr/local/zig-linux-x86_64-0.11.0:${PATH}"
+
+# Verify Zig installation
+RUN zig version
+
+# Install Nim (for Nim extensions and FFI)
+RUN curl -fsSL https://nim-lang.org/choosenim/init.sh | sh -s -- -y
+ENV PATH="/root/.nimble/bin:${PATH}"
+
+# Verify Nim installation and install nimpy
+RUN nim --version && \
+    nimble install -y nimpy
+
+# Install Kotlin/Native (for Kotlin extensions and FFI)
+RUN curl -fsSL https://github.com/JetBrains/kotlin/releases/download/v1.9.21/kotlin-native-linux-x86_64-1.9.21.tar.gz | tar -C /usr/local -xzf - && \
+    ln -s /usr/local/kotlin-native-linux-x86_64-1.9.21/bin/kotlinc-native /usr/local/bin/kotlinc-native && \
+    ln -s /usr/local/kotlin-native-linux-x86_64-1.9.21/bin/kotlin /usr/local/bin/kotlin
+ENV PATH="/usr/local/kotlin-native-linux-x86_64-1.9.21/bin:${PATH}"
+
+# Install Gradle (for Kotlin builds)
+RUN curl -fsSL https://services.gradle.org/distributions/gradle-8.5-bin.zip -o gradle.zip && \
+    unzip gradle.zip -d /usr/local && \
+    ln -s /usr/local/gradle-8.5/bin/gradle /usr/local/bin/gradle && \
+    rm gradle.zip
+ENV PATH="/usr/local/gradle-8.5/bin:${PATH}"
+
+# Verify Kotlin/Native and Gradle installation
+RUN kotlin -version && gradle --version
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Install additional Python build dependencies
+RUN pip install --no-cache-dir \
+    wheel \
+    maturin \
+    setuptools-rust \
+    hypothesis \
+    cython
+
+# Copy the entire project
+COPY . .
+
+# Create uv virtual environment and install dependencies
+RUN uv venv .venv && \
+    . .venv/bin/activate && \
+    uv pip install -r requirements.txt && \
+    uv pip install wheel maturin setuptools-rust hypothesis cython
+
+# Build all extension modules in optimized order
+# Start with simpler extensions first
+
+# 1. Build C extensions (baseline)
+RUN echo "Building C extensions..." && \
+    cd benchmark/c_ext && python setup.py build_ext --inplace && cd ../.. || \
+    echo "⚠️ C extension build failed, continuing..."
+
+# 2. Build C++ extensions
+RUN echo "Building C++ extensions..." && \
+    python scripts/build/build_cpp_ext.py || \
+    echo "⚠️ C++ extension build failed, continuing..."
+
+# 3. Build Rust extensions
+RUN echo "Building Rust extensions..." && \
+    python scripts/build/build_rust_ext.py || \
+    echo "⚠️ Rust extension build failed, continuing..."
+
+# 4. Build Fortran extensions
+RUN echo "Building Fortran extensions..." && \
+    python scripts/build/build_fortran_ext.py || \
+    echo "⚠️ Fortran extension build failed, continuing..."
+
+# 5. Build Julia extensions
+RUN echo "Building Julia extensions..." && \
+    python scripts/build/build_julia_ext.py || \
+    echo "⚠️ Julia extension build failed, continuing..."
+
+# 6. Build Go extensions
+RUN echo "Building Go extensions..." && \
+    python scripts/build/build_go_ext.py || \
+    echo "⚠️ Go extension build failed, continuing..."
+
+# 7. Build Zig extensions
+RUN echo "Building Zig extensions..." && \
+    python scripts/build/build_zig_ext.py || \
+    echo "⚠️ Zig extension build failed, continuing..."
+
+# 8. Build Nim extensions
+RUN echo "Building Nim extensions..." && \
+    python scripts/build/build_nim_ext.py || \
+    echo "⚠️ Nim extension build failed, continuing..."
+
+# 9. Build Kotlin extensions
+RUN echo "Building Kotlin extensions..." && \
+    python scripts/build/build_kotlin_ext.py || \
+    echo "⚠️ Kotlin extension build failed, continuing..."
+
+# Build FFI shared libraries
+# Activate uv environment for FFI builds
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="/app/.venv/bin:$PATH"
+
+# 10. Build C FFI shared library
+RUN echo "Building C FFI shared library..." && \
+    cd benchmark/ffi_implementations/c_ffi && \
+    make clean && make || \
+    echo "⚠️ C FFI build failed, continuing..."
+
+# 11. Build C++ FFI shared library
+RUN echo "Building C++ FFI shared library..." && \
+    cd benchmark/ffi_implementations/cpp_ffi && \
+    make clean && make || \
+    echo "⚠️ C++ FFI build failed, continuing..."
+
+# 12. Build NumPy FFI shared library
+RUN echo "Building NumPy FFI shared library..." && \
+    cd benchmark/ffi_implementations/numpy_ffi && \
+    python setup.py build_ext --inplace || \
+    echo "⚠️ NumPy FFI build failed, continuing..."
+
+# 13. Build Cython FFI shared library
+RUN echo "Building Cython FFI shared library..." && \
+    cd benchmark/ffi_implementations/cython_ffi && \
+    python setup.py build_ext --inplace || \
+    echo "⚠️ Cython FFI build failed, continuing..."
+
+# 14. Build Rust FFI shared library
+RUN echo "Building Rust FFI shared library..." && \
+    cd benchmark/ffi_implementations/rust_ffi && \
+    cargo build --release && \
+    cp target/release/librust_ffi.so . || \
+    echo "⚠️ Rust FFI build failed, continuing..."
+
+# 15. Build Fortran FFI shared library
+RUN echo "Building Fortran FFI shared library..." && \
+    cd benchmark/ffi_implementations/fortran_ffi && \
+    make clean && make || \
+    echo "⚠️ Fortran FFI build failed, continuing..."
+
+# 16. Build Julia FFI shared library
+RUN echo "Building Julia FFI shared library..." && \
+    cd benchmark/ffi_implementations/julia_ffi && \
+    julia simple_build.jl || \
+    echo "⚠️ Julia FFI build failed, continuing..."
+
+# 17. Build Go FFI shared library
+RUN echo "Building Go FFI shared library..." && \
+    cd benchmark/ffi_implementations/go_ffi && \
+    make clean && make || \
+    echo "⚠️ Go FFI build failed, continuing..."
+
+# 18. Build Zig FFI shared library
+RUN echo "Building Zig FFI shared library..." && \
+    cd benchmark/ffi_implementations/zig_ffi && \
+    zig build-lib -dynamic -O ReleaseFast functions.zig || \
+    echo "⚠️ Zig FFI build failed, continuing..."
+
+# 19. Build Nim FFI shared library
+RUN echo "Building Nim FFI shared library..." && \
+    cd benchmark/ffi_implementations/nim_ffi && \
+    nim c --app:lib --out:libnimfunctions.so functions.nim || \
+    echo "⚠️ Nim FFI build failed, continuing..."
+
+# 20. Build Kotlin FFI shared library
+RUN echo "Building Kotlin FFI shared library..." && \
+    cd benchmark/ffi_implementations/kotlin_ffi && \
+    gradle build || \
+    echo "⚠️ Kotlin FFI build failed, continuing..."
+
+# Set environment variables for optimal performance
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Set thread limits for consistent benchmarking
+ENV OMP_NUM_THREADS=4
+ENV NUMBA_NUM_THREADS=4
+ENV MKL_NUM_THREADS=4
+ENV JULIA_NUM_THREADS=4
+
+# Set library path for FFI shared libraries
+ENV LD_LIBRARY_PATH="/app/benchmark/ffi_implementations/c_ffi:/app/benchmark/ffi_implementations/cpp_ffi:/app/benchmark/ffi_implementations/rust_ffi:/app/benchmark/ffi_implementations/fortran_ffi:/app/benchmark/ffi_implementations/julia_ffi:/app/benchmark/ffi_implementations/go_ffi:/app/benchmark/ffi_implementations/zig_ffi:/app/benchmark/ffi_implementations/nim_ffi:/app/benchmark/ffi_implementations/kotlin_ffi:${LD_LIBRARY_PATH}"
+
+# Create results directory
+RUN mkdir -p benchmark/results/{json,csv,graphs}
+
+# Add a comprehensive health check script for extensions + FFI
+RUN echo '#!/bin/bash\n\
+echo "=== Multi-Language Extension + FFI Health Check ==="\n\
+echo "Python: $(python --version)"\n\
+echo "uv: $(uv --version 2>/dev/null || echo "Not available")"\n\
+echo "Rust: $(rustc --version 2>/dev/null || echo "Not available")"\n\
+echo "Julia: $(julia --version 2>/dev/null || echo "Not available")"\n\
+echo "Go: $(go version 2>/dev/null || echo "Not available")"\n\
+echo "Zig: $(zig version 2>/dev/null || echo "Not available")"\n\
+echo "Nim: $(nim --version 2>/dev/null | head -1 || echo "Not available")"\n\
+echo "Kotlin: $(kotlin -version 2>/dev/null || echo "Not available")"\n\
+echo ""\n\
+echo "=== Testing Extension Imports ==="\n\
+python -c "import benchmark.python; print(\"✓ Python implementation\")" 2>/dev/null || echo "✗ Python implementation"\n\
+python -c "import benchmark.numpy_impl; print(\"✓ NumPy implementation\")" 2>/dev/null || echo "✗ NumPy implementation"\n\
+python -c "import benchmark.c_ext; print(\"✓ C extension\")" 2>/dev/null || echo "✗ C extension"\n\
+python -c "import benchmark.cpp_ext; print(\"✓ C++ extension\")" 2>/dev/null || echo "✗ C++ extension"\n\
+python -c "import benchmark.rust_ext; print(\"✓ Rust extension\")" 2>/dev/null || echo "✗ Rust extension"\n\
+python -c "import benchmark.fortran_ext; print(\"✓ Fortran extension\")" 2>/dev/null || echo "✗ Fortran extension"\n\
+python -c "import benchmark.julia_ext; print(\"✓ Julia extension\")" 2>/dev/null || echo "✗ Julia extension"\n\
+python -c "import benchmark.go_ext; print(\"✓ Go extension\")" 2>/dev/null || echo "✗ Go extension"\n\
+python -c "import benchmark.zig_ext; print(\"✓ Zig extension\")" 2>/dev/null || echo "✗ Zig extension"\n\
+python -c "import benchmark.nim_ext; print(\"✓ Nim extension\")" 2>/dev/null || echo "✗ Nim extension"\n\
+python -c "import benchmark.kotlin_ext; print(\"✓ Kotlin extension\")" 2>/dev/null || echo "✗ Kotlin extension"\n\
+echo ""\n\
+echo "=== Testing FFI Imports ==="\n\
+python -c "import benchmark.ffi_implementations.c_ffi; print(\"✓ C FFI\")" 2>/dev/null || echo "✗ C FFI"\n\
+python -c "import benchmark.ffi_implementations.cpp_ffi; print(\"✓ C++ FFI\")" 2>/dev/null || echo "✗ C++ FFI"\n\
+python -c "import benchmark.ffi_implementations.numpy_ffi; print(\"✓ NumPy FFI\")" 2>/dev/null || echo "✗ NumPy FFI"\n\
+python -c "import benchmark.ffi_implementations.cython_ffi; print(\"✓ Cython FFI\")" 2>/dev/null || echo "✗ Cython FFI"\n\
+python -c "import benchmark.ffi_implementations.rust_ffi; print(\"✓ Rust FFI\")" 2>/dev/null || echo "✗ Rust FFI"\n\
+python -c "import benchmark.ffi_implementations.fortran_ffi; print(\"✓ Fortran FFI\")" 2>/dev/null || echo "✗ Fortran FFI"\n\
+python -c "import benchmark.ffi_implementations.julia_ffi; print(\"✓ Julia FFI\")" 2>/dev/null || echo "✗ Julia FFI"\n\
+python -c "import benchmark.ffi_implementations.go_ffi; print(\"✓ Go FFI\")" 2>/dev/null || echo "✗ Go FFI"\n\
+python -c "import benchmark.ffi_implementations.zig_ffi; print(\"✓ Zig FFI\")" 2>/dev/null || echo "✗ Zig FFI"\n\
+python -c "import benchmark.ffi_implementations.nim_ffi; print(\"✓ Nim FFI\")" 2>/dev/null || echo "✗ Nim FFI"\n\
+python -c "import benchmark.ffi_implementations.kotlin_ffi; print(\"✓ Kotlin FFI\")" 2>/dev/null || echo "✗ Kotlin FFI"\n\
+echo ""\n\
+echo "=== Testing uv Environment ==="\n\
+python -c "from benchmark.ffi_implementations.uv_checker import UVEnvironmentChecker; UVEnvironmentChecker().print_environment_status()"\n\
+echo ""\n\
+echo "=== Health Check Complete ==="\n\
+' > /usr/local/bin/health-check-ffi && chmod +x /usr/local/bin/health-check-ffi
+
+# Add FFI benchmark runner script
+RUN echo '#!/bin/bash\n\
+echo "=== Running FFI Benchmark ==="\n\
+python benchmark/runner/ffi_benchmark_runner.py "$@"\n\
+' > /usr/local/bin/run-ffi-benchmark && chmod +x /usr/local/bin/run-ffi-benchmark
+
+# Default command runs health check and then FFI benchmark
+CMD ["sh", "-c", "health-check-ffi && run-ffi-benchmark --mode all"]

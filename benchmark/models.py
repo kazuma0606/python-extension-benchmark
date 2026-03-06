@@ -17,6 +17,16 @@ class EnvironmentInfo:
     memory_gb: float
     python_version: str
     docker: bool
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """辞書形式に変換"""
+        return {
+            'os': self.os,
+            'cpu': self.cpu,
+            'memory_gb': self.memory_gb,
+            'python_version': self.python_version,
+            'docker': self.docker,
+        }
 
 
 @dataclass

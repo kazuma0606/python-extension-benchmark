@@ -16,6 +16,7 @@ from benchmark.models import (
 )
 from benchmark.statistics import Statistics
 from benchmark.runner.error_handler import ErrorHandler
+from benchmark.ffi_implementations.uv_checker import UVEnvironmentChecker, check_uv_environment
 
 
 class BenchmarkRunner:
@@ -25,6 +26,13 @@ class BenchmarkRunner:
         """初期化"""
         self.environment = self._get_environment_info()
         self.error_handler = ErrorHandler()
+        self.uv_checker = UVEnvironmentChecker()
+        
+        # FFI実装の識別
+        self.ffi_implementations = {
+            "c_ffi", "cpp_ffi", "numpy_ffi", "cython_ffi", "rust_ffi",
+            "fortran_ffi", "julia_ffi", "go_ffi", "zig_ffi", "nim_ffi", "kotlin_ffi"
+        }
     
     def _get_environment_info(self) -> EnvironmentInfo:
         """実行環境情報を取得
@@ -264,26 +272,46 @@ class BenchmarkRunner:
         return all_results
     
     def get_all_available_implementations(self) -> List[str]:
-        """利用可能な全実装名を取得
+        """利用可能な全実装名を取得（FFI実装含む）
         
         Returns:
             List[str]: 利用可能な実装名のリスト
         """
-        all_implementations = [
+        # 拡張版実装（Pure Python + 拡張）
+        extension_implementations = [
             "python", "numpy_impl", "c_ext", "cpp_ext", "cython_ext", 
             "rust_ext", "fortran_ext", "julia_ext", "go_ext", 
             "zig_ext", "nim_ext", "kotlin_ext"
         ]
         
+        # FFI実装
+        ffi_implementations = [
+            "c_ffi", "cpp_ffi", "numpy_ffi", "cython_ffi", "rust_ffi",
+            "fortran_ffi", "julia_ffi", "go_ffi", "zig_ffi", "nim_ffi", "kotlin_ffi"
+        ]
+        
+        all_implementations = extension_implementations + ffi_implementations
         available = []
+        
         for impl_name in all_implementations:
-            module_name = f"benchmark.{impl_name}"
-            try:
-                __import__(module_name)
-                available.append(impl_name)
-            except ImportError:
-                # 実装が利用できない場合はスキップ
-                continue
+            if impl_name.endswith('_ffi'):
+                # FFI実装の場合
+                try:
+                    module_name = f"benchmark.ffi_implementations.{impl_name}"
+                    __import__(module_name)
+                    available.append(impl_name)
+                except ImportError:
+                    # FFI実装が利用できない場合はスキップ
+                    continue
+            else:
+                # 拡張版実装の場合
+                module_name = f"benchmark.{impl_name}"
+                try:
+                    __import__(module_name)
+                    available.append(impl_name)
+                except ImportError:
+                    # 実装が利用できない場合はスキップ
+                    continue
         
         return available
 
@@ -291,11 +319,11 @@ class BenchmarkRunner:
         self,
         implementation_names: List[str]
     ) -> List[Implementation]:
-        """実装モジュールを安全にロード
+        """実装モジュールを安全にロード（FFI実装対応）
         
         Args:
             implementation_names: ロードする実装名のリスト
-                例: ["python", "numpy_impl", "c_ext"]
+                例: ["python", "numpy_impl", "c_ext", "c_ffi", "cpp_ffi"]
         
         Returns:
             List[Implementation]: 正常にロードされた実装のリスト
@@ -303,22 +331,41 @@ class BenchmarkRunner:
         implementations = []
         
         language_map = {
+            # 拡張版実装
             "python": "Python",
             "numpy_impl": "NumPy",
-            "c_ext": "C",
-            "cpp_ext": "C++",
-            "cython_ext": "Cython",
-            "rust_ext": "Rust",
-            "fortran_ext": "Fortran",
-            "julia_ext": "Julia",
-            "go_ext": "Go",
-            "zig_ext": "Zig",
-            "nim_ext": "Nim",
-            "kotlin_ext": "Kotlin",
+            "c_ext": "C Extension",
+            "cpp_ext": "C++ Extension",
+            "cython_ext": "Cython Extension",
+            "rust_ext": "Rust Extension",
+            "fortran_ext": "Fortran Extension",
+            "julia_ext": "Julia Extension",
+            "go_ext": "Go Extension",
+            "zig_ext": "Zig Extension",
+            "nim_ext": "Nim Extension",
+            "kotlin_ext": "Kotlin Extension",
+            # FFI実装
+            "c_ffi": "C FFI",
+            "cpp_ffi": "C++ FFI",
+            "numpy_ffi": "NumPy FFI",
+            "cython_ffi": "Cython FFI",
+            "rust_ffi": "Rust FFI",
+            "fortran_ffi": "Fortran FFI",
+            "julia_ffi": "Julia FFI",
+            "go_ffi": "Go FFI",
+            "zig_ffi": "Zig FFI",
+            "nim_ffi": "Nim FFI",
+            "kotlin_ffi": "Kotlin FFI",
         }
         
         for name in implementation_names:
-            module_name = f"benchmark.{name}"
+            if name.endswith('_ffi'):
+                # FFI実装の場合
+                module_name = f"benchmark.ffi_implementations.{name}"
+            else:
+                # 拡張版実装の場合
+                module_name = f"benchmark.{name}"
+            
             module = self.error_handler.safe_import_module(module_name, name)
             
             if module is not None:
@@ -340,17 +387,28 @@ class BenchmarkRunner:
     def run_comprehensive_benchmark(
         self,
         scenarios: Optional[List[Scenario]] = None,
-        implementation_filter: Optional[List[str]] = None
+        implementation_filter: Optional[List[str]] = None,
+        check_uv_env: bool = True
     ) -> List[BenchmarkResult]:
-        """包括的ベンチマークを実行（全12実装対応）
+        """包括的ベンチマークを実行（全12実装対応 + FFI実装）
         
         Args:
             scenarios: 実行するシナリオのリスト（Noneの場合はデフォルト）
             implementation_filter: 実行する実装のフィルタ（Noneの場合は全て）
+            check_uv_env: uv環境確認を行うかどうか
             
         Returns:
             List[BenchmarkResult]: 全シナリオの計測結果
         """
+        # uv環境確認（FFI実装を含む場合）
+        if check_uv_env and implementation_filter:
+            has_ffi = any(impl.endswith('_ffi') for impl in implementation_filter)
+            if has_ffi:
+                print("🔍 Checking uv environment for FFI implementations...")
+                if not check_uv_environment():
+                    print("⚠️  Warning: uv environment issues detected. FFI implementations may not work correctly.")
+                    print("   Continuing with available implementations...\n")
+        
         from benchmark.runner.scenarios import get_default_implementations
         
         # 実装リストを決定
@@ -422,10 +480,16 @@ class BenchmarkRunner:
         print(f"{'-'*60}")
         
         language_map = {
-            "python": "Python", "numpy_impl": "NumPy", "c_ext": "C",
-            "cpp_ext": "C++", "cython_ext": "Cython", "rust_ext": "Rust",
-            "fortran_ext": "Fortran", "julia_ext": "Julia", "go_ext": "Go",
-            "zig_ext": "Zig", "nim_ext": "Nim", "kotlin_ext": "Kotlin"
+            # 拡張版実装
+            "python": "Python", "numpy_impl": "NumPy", "c_ext": "C Extension",
+            "cpp_ext": "C++ Extension", "cython_ext": "Cython Extension", "rust_ext": "Rust Extension",
+            "fortran_ext": "Fortran Extension", "julia_ext": "Julia Extension", "go_ext": "Go Extension",
+            "zig_ext": "Zig Extension", "nim_ext": "Nim Extension", "kotlin_ext": "Kotlin Extension",
+            # FFI実装
+            "c_ffi": "C FFI", "cpp_ffi": "C++ FFI", "numpy_ffi": "NumPy FFI",
+            "cython_ffi": "Cython FFI", "rust_ffi": "Rust FFI", "fortran_ffi": "Fortran FFI",
+            "julia_ffi": "Julia FFI", "go_ffi": "Go FFI", "zig_ffi": "Zig FFI",
+            "nim_ffi": "Nim FFI", "kotlin_ffi": "Kotlin FFI"
         }
         
         for impl in implementations:

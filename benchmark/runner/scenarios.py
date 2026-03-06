@@ -178,24 +178,83 @@ def get_all_scenarios() -> List[Scenario]:
 
 
 def get_default_implementations() -> List[str]:
-    """デフォルトの実装リストを取得
+    """デフォルトの実装リストを取得（拡張版 + FFI版）
     
     Returns:
-        List[str]: 12の実装名
+        List[str]: 24の実装名（12拡張版 + 12FFI版）
+    """
+    extension_implementations = [
+        "python",      # Pure Python
+        "numpy_impl",  # NumPy
+        "c_ext",       # C Extension
+        "cpp_ext",     # C++ Extension
+        "cython_ext",  # Cython Extension
+        "rust_ext",    # Rust Extension
+        "fortran_ext", # Fortran Extension
+        "julia_ext",   # Julia Extension
+        "go_ext",      # Go Extension
+        "zig_ext",     # Zig Extension
+        "nim_ext",     # Nim Extension
+        "kotlin_ext",  # Kotlin Extension
+    ]
+    
+    ffi_implementations = [
+        "c_ffi",       # C FFI
+        "cpp_ffi",     # C++ FFI
+        "numpy_ffi",   # NumPy FFI
+        "cython_ffi",  # Cython FFI
+        "rust_ffi",    # Rust FFI
+        "fortran_ffi", # Fortran FFI
+        "julia_ffi",   # Julia FFI
+        "go_ffi",      # Go FFI
+        "zig_ffi",     # Zig FFI
+        "nim_ffi",     # Nim FFI
+        "kotlin_ffi",  # Kotlin FFI
+    ]
+    
+    return extension_implementations + ffi_implementations
+
+
+def get_extension_implementations() -> List[str]:
+    """拡張版実装のみを取得
+    
+    Returns:
+        List[str]: 12の拡張版実装名
     """
     return [
         "python",      # Pure Python
         "numpy_impl",  # NumPy
-        "c_ext",       # C
-        "cpp_ext",     # C++
-        "cython_ext",  # Cython
-        "rust_ext",    # Rust
-        "fortran_ext", # Fortran
-        "julia_ext",   # Julia
-        "go_ext",      # Go
-        "zig_ext",     # Zig
-        "nim_ext",     # Nim
-        "kotlin_ext",  # Kotlin
+        "c_ext",       # C Extension
+        "cpp_ext",     # C++ Extension
+        "cython_ext",  # Cython Extension
+        "rust_ext",    # Rust Extension
+        "fortran_ext", # Fortran Extension
+        "julia_ext",   # Julia Extension
+        "go_ext",      # Go Extension
+        "zig_ext",     # Zig Extension
+        "nim_ext",     # Nim Extension
+        "kotlin_ext",  # Kotlin Extension
+    ]
+
+
+def get_ffi_implementations() -> List[str]:
+    """FFI実装のみを取得
+    
+    Returns:
+        List[str]: 11のFFI実装名（Pure Pythonは除く）
+    """
+    return [
+        "c_ffi",       # C FFI
+        "cpp_ffi",     # C++ FFI
+        "numpy_ffi",   # NumPy FFI
+        "cython_ffi",  # Cython FFI
+        "rust_ffi",    # Rust FFI
+        "fortran_ffi", # Fortran FFI
+        "julia_ffi",   # Julia FFI
+        "go_ffi",      # Go FFI
+        "zig_ffi",     # Zig FFI
+        "nim_ffi",     # Nim FFI
+        "kotlin_ffi",  # Kotlin FFI
     ]
 
 

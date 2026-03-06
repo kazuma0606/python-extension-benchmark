@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  # FFI Benchmark Service - Full Extension + FFI Support
+  ffi-benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile.ffi
+    container_name: py-benchmark-ffi
+    volumes:
+      # Mount results directory for output persistence
+      - ./benchmark/results:/app/benchmark/results
+      # Mount source code for development (optional)
+      - ./benchmark:/app/benchmark:ro
+      - ./tests:/app/tests:ro
+      - ./scripts:/app/scripts:ro
+    environment:
+      # Performance optimization
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      # Thread limits for consistent benchmarking
+      - OMP_NUM_THREADS=4
+      - NUMBA_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - JULIA_NUM_THREADS=4
+      # FFI library paths
+      - LD_LIBRARY_PATH=/app/benchmark/ffi_implementations/c_ffi:/app/benchmark/ffi_implementations/cpp_ffi:/app/benchmark/ffi_implementations/rust_ffi:/app/benchmark/ffi_implementations/fortran_ffi:/app/benchmark/ffi_implementations/julia_ffi:/app/benchmark/ffi_implementations/go_ffi:/app/benchmark/ffi_implementations/zig_ffi:/app/benchmark/ffi_implementations/nim_ffi:/app/benchmark/ffi_implementations/kotlin_ffi
+      # uv environment
+      - VIRTUAL_ENV=/app/.venv
+      - PATH=/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    working_dir: /app
+    command: ["health-check-ffi"]
+    
+  # Extension-only Benchmark Service (for comparison)
+  extension-benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: py-benchmark-ext
+    volumes:
+      - ./benchmark/results:/app/benchmark/results
+      - ./benchmark:/app/benchmark:ro
+      - ./tests:/app/tests:ro
+      - ./scripts:/app/scripts:ro
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - OMP_NUM_THREADS=4
+      - NUMBA_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - JULIA_NUM_THREADS=4
+    working_dir: /app
+    command: ["health-check"]
+
+  # FFI Development Service (with interactive shell)
+  ffi-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.ffi
+    container_name: py-benchmark-ffi-dev
+    volumes:
+      - ./:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - OMP_NUM_THREADS=4
+      - NUMBA_NUM_THREADS=4
+      - MKL_NUM_THREADS=4
+      - JULIA_NUM_THREADS=4
+      - LD_LIBRARY_PATH=/app/benchmark/ffi_implementations/c_ffi:/app/benchmark/ffi_implementations/cpp_ffi:/app/benchmark/ffi_implementations/rust_ffi:/app/benchmark/ffi_implementations/fortran_ffi:/app/benchmark/ffi_implementations/julia_ffi:/app/benchmark/ffi_implementations/go_ffi:/app/benchmark/ffi_implementations/zig_ffi:/app/benchmark/ffi_implementations/nim_ffi:/app/benchmark/ffi_implementations/kotlin_ffi
+      - VIRTUAL_ENV=/app/.venv
+      - PATH=/app/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    command: ["/bin/bash"]
+
+volumes:
+  benchmark_results:
+    driver: local

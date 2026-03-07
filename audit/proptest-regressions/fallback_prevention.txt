@@ -10,3 +10,5 @@ cc 92abb4d4fa1e26454e0566b3600de30d16942dcc2cdc1e0d3e1bd3669146be19 # shrinks to
 cc fa24a12cdfa4b6fb3d18912e65ce849dfd667769427701ab83175588721a04e8 # shrinks to impl_name = "numpy_impl", sample_size = 3
 cc feba96138912d73ac5552f6d7941751de9e66490ae5dbb1a902c7a42e3312343 # shrinks to impl_name = "zig_ext", sample_size = 5
 cc 8bef11b4a2819a8ffdd9e71a011cc52adb961b5afd957b49401cfb3ed76b9e8c # shrinks to impl_name = "go_ext", sample_size = 5
+cc b431bfd0776577add5191ece725827afa05b466401086d3b835fc94f543781e2 # shrinks to impl_name = "c_ext", sample_size = 5
+cc 3bdaae5fa44dab00bdffface31a14e4dcf55d23cf4693aaa21667992d216ac44 # shrinks to impl_name = "fortran_ext", sample_size = 3

@@ -1901,8 +1901,13 @@ fun parallelCompute(input: CPointer<DoubleVar>?, output: CPointer<DoubleVar>?, s
 
     /// Fix Rust/Go specific compilation and linking issues
     pub fn fix_rust_go_issues(&self, ffi_impl: &str, issues: &[DLLIssue]) -> Result<Vec<String>> {
+        // Return immediately for unsupported implementations
+        if !matches!(ffi_impl, "rust_ext" | "go_ext") {
+            return Ok(vec![format!("Unsupported implementation for Rust/Go fixes: {}", ffi_impl)]);
+        }
+
         let mut fix_actions = Vec::new();
-        
+
         for issue in issues {
             match ffi_impl {
                 "rust_ext" => {
@@ -1911,12 +1916,10 @@ fun parallelCompute(input: CPointer<DoubleVar>?, output: CPointer<DoubleVar>?, s
                 "go_ext" => {
                     fix_actions.extend(self.fix_go_specific_issue(issue));
                 },
-                _ => {
-                    fix_actions.push(format!("Unsupported implementation for Rust/Go fixes: {}", ffi_impl));
-                }
+                _ => unreachable!(),
             }
         }
-        
+
         Ok(fix_actions)
     }
 

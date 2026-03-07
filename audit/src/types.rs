@@ -722,3 +722,93 @@ pub struct PerformanceReport {
     /// Human-readable summary
     pub summary: String,
 }
+
+// ─── Task 10: Comprehensive Report Types ──────────────────────────────────────
+
+/// Per-implementation bug summary entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImplementationBugSummary {
+    pub implementation: String,
+    pub status: ImplementationStatus,
+    pub dll_issues: Vec<DLLIssue>,
+    pub loading_errors: Vec<LoadingError>,
+    pub missing_dependencies: Vec<String>,
+    pub architecture_mismatch: bool,
+    pub path_issues: Vec<PathIssue>,
+    pub fix_steps: Vec<String>,
+}
+
+/// Status of an FFI implementation
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ImplementationStatus {
+    Working,
+    Failed,
+    PartiallyWorking,
+    Unknown,
+}
+
+impl std::fmt::Display for ImplementationStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ImplementationStatus::Working => write!(f, "WORKING"),
+            ImplementationStatus::Failed => write!(f, "FAILED"),
+            ImplementationStatus::PartiallyWorking => write!(f, "PARTIAL"),
+            ImplementationStatus::Unknown => write!(f, "UNKNOWN"),
+        }
+    }
+}
+
+/// Structured bug analysis report (Requirement 1.5)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BugAnalysisReport {
+    pub report_title: String,
+    pub generated_at: String,
+    pub total_implementations: usize,
+    pub working_count: usize,
+    pub failed_count: usize,
+    pub partial_count: usize,
+    pub implementation_summaries: Vec<ImplementationBugSummary>,
+    pub critical_issues: Vec<String>,
+    pub fix_priority_list: Vec<String>,
+    pub report_text: String,
+}
+
+/// Per-implementation performance entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ImplementationPerformanceEntry {
+    pub implementation: String,
+    pub performance_ratio: f64,
+    pub speedup_percentage: f64,
+    pub is_significantly_faster: bool,
+    pub fallback_suspected: bool,
+    pub p_value: f64,
+    pub effect_size: f64,
+    pub flags: Vec<String>,
+    pub sample_size: usize,
+}
+
+/// Structured performance validation report (Requirements 6.1-6.5)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceValidationReport {
+    pub report_title: String,
+    pub generated_at: String,
+    pub total_implementations: usize,
+    pub passing_count: usize,
+    pub failing_count: usize,
+    pub suspected_fallback_count: usize,
+    pub average_speedup_percentage: f64,
+    pub entries: Vec<ImplementationPerformanceEntry>,
+    pub fallback_detections: Vec<String>,
+    pub report_text: String,
+}
+
+/// Combined audit report
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ComprehensiveAuditReport {
+    pub report_title: String,
+    pub generated_at: String,
+    pub bug_analysis: BugAnalysisReport,
+    pub performance_validation: PerformanceValidationReport,
+    pub overall_summary: String,
+    pub report_text: String,
+}

@@ -20,6 +20,9 @@ wheels/
 .installed.cfg
 *.egg
 
+# audit
+audit/target/
+
 # Testing
 .pytest_cache/
 .hypothesis/

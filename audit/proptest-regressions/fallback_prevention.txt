@@ -1,0 +1,14 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 590194785fa36f0ba01f84feb2535fa3893a085434304af69146448b14be2cc6 # shrinks to implementation = "a", contaminated_results = [1000.0, 50.0, 1000.0, 1000.0, 1000.0]
+cc 04845eaa1e92f6f075fd43a36f4eee399f99d17b90e480b9628adfa786df6c48 # shrinks to implementation = "_", contaminated_results = [1000.0, 1000.0, 0.0, 10000000.0, 1000.0, 1000.0]
+cc 92abb4d4fa1e26454e0566b3600de30d16942dcc2cdc1e0d3e1bd3669146be19 # shrinks to impl_name = "numpy_imrbnkaymyijguvxw", sample_size = 7
+cc fa24a12cdfa4b6fb3d18912e65ce849dfd667769427701ab83175588721a04e8 # shrinks to impl_name = "numpy_impl", sample_size = 3
+cc feba96138912d73ac5552f6d7941751de9e66490ae5dbb1a902c7a42e3312343 # shrinks to impl_name = "zig_ext", sample_size = 5
+cc 8bef11b4a2819a8ffdd9e71a011cc52adb961b5afd957b49401cfb3ed76b9e8c # shrinks to impl_name = "go_ext", sample_size = 5
+cc b431bfd0776577add5191ece725827afa05b466401086d3b835fc94f543781e2 # shrinks to impl_name = "c_ext", sample_size = 5
+cc 3bdaae5fa44dab00bdffface31a14e4dcf55d23cf4693aaa21667992d216ac44 # shrinks to impl_name = "fortran_ext", sample_size = 3

@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc b10fa30f381b0705af60707b041c36bb59f1ebb68b476266046fe6dc2e641f24 # shrinks to normal_results = [1000.0, 1000.0, 1000.0], fallback_results = [15000000.0, 15000000.0, 15000000.0]
+cc 4adf9cbc4a984e5d129a035d6cce7640a3e551912c28e6255887de0fb2cd7fe4 # shrinks to contaminated_results = [19532530.996629823, 10000000.0, 1000.0, 0.0, 1000.0]

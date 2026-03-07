@@ -538,3 +538,109 @@ pub enum BaselineSource {
     UserProvided,
     DefaultEstimate,
 }
+
+/// Native code verification result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct NativeCodeVerificationResult {
+    pub implementation: String,
+    pub is_native_verified: bool,
+    pub confidence_score: f64,
+    pub verification_time_ns: u64,
+    pub execution_monitoring: ExecutionPathMonitoring,
+    pub performance_analysis: PerformanceAnomalyResult,
+    pub library_exists: bool,
+    pub execution_traces: Vec<String>,
+    pub verification_issues: Vec<VerificationIssue>,
+    pub recommendations: Vec<String>,
+}
+
+/// Verification issue
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VerificationIssue {
+    pub issue_type: VerificationIssueType,
+    pub severity: IssueSeverity,
+    pub description: String,
+    pub affected_component: String,
+    pub resolution_suggestion: String,
+}
+
+/// Types of verification issues
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum VerificationIssueType {
+    FallbackDetected,
+    LowNativePercentage,
+    PerformanceAnomaly,
+    LibraryNotFound,
+    SuspiciousCallPattern,
+}
+
+/// Issue severity levels
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum IssueSeverity {
+    Critical,
+    High,
+    Medium,
+    Low,
+    Info,
+}
+
+/// Contamination analysis result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContaminationAnalysis {
+    pub result_index: usize,
+    pub result_value: f64,
+    pub is_contaminated: bool,
+    pub contamination_type: ContaminationType,
+    pub contamination_reason: String,
+    pub confidence_score: f64,
+    pub detection_method: String,
+}
+
+/// Types of contamination
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ContaminationType {
+    None,
+    FallbackDetected,
+    PerformanceAnomaly,
+    StatisticalOutlier,
+    InvalidValue,
+    SuspiciousValue,
+}
+
+/// Statistical analysis for contamination detection
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContaminationStatisticalAnalysis {
+    pub sample_size: usize,
+    pub mean: f64,
+    pub median: f64,
+    pub standard_deviation: f64,
+    pub coefficient_of_variation: f64,
+    pub min_value: f64,
+    pub max_value: f64,
+    pub contamination_indicators: Vec<String>,
+    pub outlier_threshold_lower: f64,
+    pub outlier_threshold_upper: f64,
+}
+
+/// Filtering summary
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FilteringSummary {
+    pub total_results: usize,
+    pub contaminated_results: usize,
+    pub filtered_results: usize,
+    pub contamination_types: std::collections::HashMap<String, usize>,
+    pub filtering_confidence: f64,
+}
+
+/// Complete contamination filter result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContaminationFilterResult {
+    pub implementation: String,
+    pub original_results: Vec<f64>,
+    pub filtered_results: Vec<f64>,
+    pub contamination_analyses: Vec<ContaminationAnalysis>,
+    pub statistical_analysis: Option<ContaminationStatisticalAnalysis>,
+    pub filtering_summary: FilteringSummary,
+    pub filtering_time_ns: u64,
+    pub recommendations: Vec<String>,
+}

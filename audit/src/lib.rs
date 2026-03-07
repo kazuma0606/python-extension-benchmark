@@ -15,6 +15,7 @@ pub mod minimal_test_framework;
 // Re-export main types
 pub use error::{FFIAuditError, Result};
 pub use types::*;
+pub use fallback_prevention::FallbackPreventionSystem;
 
 // Python bindings
 use pyo3::prelude::*;

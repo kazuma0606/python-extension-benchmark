@@ -1574,6 +1574,294 @@ impl FallbackPreventionSystem {
             .map(|n| n.get())
             .unwrap_or(4)
     }
+
+    // ─── Task 9.1: Performance Baseline Comparison ────────────────────────────
+
+    /// Compare an FFI implementation against a pure-Python baseline.
+    ///
+    /// Returns a [`PerformanceComparisonResult`] describing the speedup ratio,
+    /// statistical significance (Welch's t-test), and any detected anomalies.
+    pub fn compare_with_python_baseline(
+        &self,
+        implementation: &str,
+        ffi_results_ns: &[f64],
+        python_baseline_ns: &[f64],
+    ) -> Result<PerformanceComparisonResult> {
+        if ffi_results_ns.is_empty() || python_baseline_ns.is_empty() {
+            return Err(AuditError::Unknown(
+                "Cannot compare: one or both result sets are empty".to_string(),
+            ));
+        }
+
+        let ffi_mean = ffi_results_ns.iter().sum::<f64>() / ffi_results_ns.len() as f64;
+        let py_mean  = python_baseline_ns.iter().sum::<f64>() / python_baseline_ns.len() as f64;
+
+        // performance_ratio > 1.0  ⟹  FFI is faster
+        let performance_ratio = if ffi_mean > 0.0 { py_mean / ffi_mean } else { 1.0 };
+        let speedup_percentage = (py_mean - ffi_mean) / py_mean.max(1.0) * 100.0;
+
+        let sig = self.perform_welch_t_test(ffi_results_ns, python_baseline_ns)?;
+        let is_significantly_faster = sig.is_significant && performance_ratio > 1.0;
+
+        // Suspect fallback when the FFI is not meaningfully faster than Python
+        let fallback_suspected = performance_ratio < 1.1 || !sig.is_significant;
+
+        let flags = self.detect_performance_flags(
+            performance_ratio,
+            &sig,
+            ffi_results_ns,
+            fallback_suspected,
+        );
+
+        let recommendations = self.build_comparison_recommendations(
+            implementation,
+            performance_ratio,
+            is_significantly_faster,
+            fallback_suspected,
+            &flags,
+        );
+
+        Ok(PerformanceComparisonResult {
+            implementation: implementation.to_string(),
+            ffi_results_ns: ffi_results_ns.to_vec(),
+            python_baseline_ns: python_baseline_ns.to_vec(),
+            performance_ratio,
+            speedup_percentage,
+            statistical_significance: sig,
+            is_significantly_faster,
+            fallback_suspected,
+            performance_flags: flags,
+            recommendations,
+        })
+    }
+
+    /// Welch's two-sample t-test.
+    ///
+    /// The t-statistic is `(py_mean − ffi_mean) / se`, so a positive value
+    /// means the FFI sample has a lower mean (i.e., is faster).
+    fn perform_welch_t_test(
+        &self,
+        ffi_results: &[f64],
+        python_baseline: &[f64],
+    ) -> Result<SignificanceTestResult> {
+        let n_a = ffi_results.len() as f64;
+        let n_b = python_baseline.len() as f64;
+
+        if n_a < 2.0 || n_b < 2.0 {
+            return Ok(SignificanceTestResult {
+                test_name: "Welch's t-test".to_string(),
+                t_statistic: 0.0,
+                p_value: 1.0,
+                confidence_level: 0.95,
+                is_significant: false,
+                effect_size: 0.0,
+                degrees_of_freedom: 0.0,
+            });
+        }
+
+        let mean_a = ffi_results.iter().sum::<f64>() / n_a;
+        let mean_b = python_baseline.iter().sum::<f64>() / n_b;
+
+        let var_a = ffi_results.iter().map(|&x| (x - mean_a).powi(2)).sum::<f64>() / (n_a - 1.0);
+        let var_b = python_baseline.iter().map(|&x| (x - mean_b).powi(2)).sum::<f64>() / (n_b - 1.0);
+
+        let se = (var_a / n_a + var_b / n_b).sqrt();
+        let t_stat = if se > 0.0 { (mean_b - mean_a) / se } else { 0.0 };
+
+        // Welch–Satterthwaite degrees of freedom
+        let va_na = var_a / n_a;
+        let vb_nb = var_b / n_b;
+        let df = if va_na + vb_nb > 0.0 {
+            (va_na + vb_nb).powi(2)
+                / (va_na.powi(2) / (n_a - 1.0) + vb_nb.powi(2) / (n_b - 1.0))
+        } else {
+            n_a + n_b - 2.0
+        };
+
+        // Approximate p-value via normal distribution (adequate for n ≥ 5)
+        let p_value = self.approx_two_sided_p_value(t_stat);
+        let effect_size = self.calculate_cohens_d(ffi_results, python_baseline);
+
+        Ok(SignificanceTestResult {
+            test_name: "Welch's t-test".to_string(),
+            t_statistic: t_stat,
+            p_value,
+            confidence_level: 0.95,
+            is_significant: p_value < 0.05,
+            effect_size,
+            degrees_of_freedom: df,
+        })
+    }
+
+    /// Approximate two-sided p-value from a z/t-statistic using the normal CDF.
+    fn approx_two_sided_p_value(&self, t: f64) -> f64 {
+        // P(|Z| > |t|) ≈ erfc(|t| / sqrt(2))
+        let z = t.abs() / std::f64::consts::SQRT_2;
+        // Simple rational approximation of erfc
+        let p_one_sided = 0.5 * self.erfc_approx(z);
+        (2.0 * p_one_sided).min(1.0)
+    }
+
+    /// Rational approximation of erfc(x) for x ≥ 0 (Abramowitz & Stegun 7.1.26).
+    fn erfc_approx(&self, x: f64) -> f64 {
+        if x < 0.0 { return 2.0 - self.erfc_approx(-x); }
+        let t = 1.0 / (1.0 + 0.3275911 * x);
+        let poly = t * (0.254_829_592
+            + t * (-0.284_496_736
+            + t * (1.421_413_741
+            + t * (-1.453_152_027
+            + t * 1.061_405_429))));
+        poly * (-x * x).exp()
+    }
+
+    /// Cohen's d effect size (positive = FFI is faster than Python).
+    fn calculate_cohens_d(&self, ffi_results: &[f64], python_baseline: &[f64]) -> f64 {
+        let n_a = ffi_results.len() as f64;
+        let n_b = python_baseline.len() as f64;
+        if n_a < 2.0 || n_b < 2.0 { return 0.0; }
+
+        let mean_a = ffi_results.iter().sum::<f64>() / n_a;
+        let mean_b = python_baseline.iter().sum::<f64>() / n_b;
+
+        let var_a = ffi_results.iter().map(|&x| (x - mean_a).powi(2)).sum::<f64>() / (n_a - 1.0);
+        let var_b = python_baseline.iter().map(|&x| (x - mean_b).powi(2)).sum::<f64>() / (n_b - 1.0);
+
+        let pooled_sd = ((var_a + var_b) / 2.0).sqrt();
+        if pooled_sd > 0.0 { (mean_b - mean_a) / pooled_sd } else { 0.0 }
+    }
+
+    /// Identify anomalous performance patterns.
+    fn detect_performance_flags(
+        &self,
+        ratio: f64,
+        sig: &SignificanceTestResult,
+        ffi_results: &[f64],
+        fallback_suspected: bool,
+    ) -> Vec<PerformanceFlag> {
+        let mut flags = Vec::new();
+
+        if ffi_results.len() < 3 {
+            flags.push(PerformanceFlag::InsufficientData);
+        }
+
+        if ratio < 1.0 {
+            flags.push(PerformanceFlag::SignificantlySlowerThanPython);
+        }
+
+        // Ratio between 0.9 and 1.1 → suspiciously similar to Python
+        if (0.9..=1.1).contains(&ratio) && sig.is_significant {
+            flags.push(PerformanceFlag::SuspiciouslySimilarToPython);
+        }
+
+        if fallback_suspected && ratio < 1.2 {
+            flags.push(PerformanceFlag::PotentialFallback);
+        }
+
+        // High variance check (CV > 0.3)
+        if ffi_results.len() >= 2 {
+            let mean = ffi_results.iter().sum::<f64>() / ffi_results.len() as f64;
+            let std_dev = (ffi_results.iter().map(|&x| (x - mean).powi(2)).sum::<f64>()
+                / (ffi_results.len() - 1) as f64).sqrt();
+            if mean > 0.0 && std_dev / mean > 0.3 {
+                flags.push(PerformanceFlag::HighVariance);
+            }
+        }
+
+        flags
+    }
+
+    /// Build human-readable recommendations based on the comparison result.
+    fn build_comparison_recommendations(
+        &self,
+        implementation: &str,
+        ratio: f64,
+        is_significantly_faster: bool,
+        fallback_suspected: bool,
+        flags: &[PerformanceFlag],
+    ) -> Vec<String> {
+        let mut recs = Vec::new();
+
+        if is_significantly_faster {
+            recs.push(format!(
+                "{}: confirmed {:.1}× faster than Python — no action required.",
+                implementation, ratio
+            ));
+        } else if fallback_suspected {
+            recs.push(format!(
+                "{}: potential Python fallback detected (ratio={:.2}). Investigate library loading.",
+                implementation, ratio
+            ));
+        }
+
+        if flags.contains(&PerformanceFlag::SignificantlySlowerThanPython) {
+            recs.push(format!(
+                "{}: FFI is slower than Python (ratio={:.2}). Check for overhead or fallback.",
+                implementation, ratio
+            ));
+        }
+        if flags.contains(&PerformanceFlag::HighVariance) {
+            recs.push(format!(
+                "{}: high variance detected. Increase warmup iterations or check system load.",
+                implementation
+            ));
+        }
+        if flags.contains(&PerformanceFlag::InsufficientData) {
+            recs.push(format!(
+                "{}: fewer than 3 measurements. Collect more data for reliable comparison.",
+                implementation
+            ));
+        }
+
+        recs
+    }
+
+    /// Produce an aggregate [`PerformanceReport`] from multiple comparisons.
+    pub fn generate_performance_report(
+        &self,
+        comparisons: &[PerformanceComparisonResult],
+    ) -> Result<PerformanceReport> {
+        let mut passing = Vec::new();
+        let mut failing = Vec::new();
+        let mut suspected = Vec::new();
+
+        for c in comparisons {
+            if c.fallback_suspected {
+                suspected.push(c.implementation.clone());
+                failing.push(c.implementation.clone());
+            } else if c.is_significantly_faster {
+                passing.push(c.implementation.clone());
+            } else {
+                failing.push(c.implementation.clone());
+            }
+        }
+
+        let avg_speedup = if passing.is_empty() {
+            0.0
+        } else {
+            comparisons.iter()
+                .filter(|c| c.is_significantly_faster)
+                .map(|c| c.speedup_percentage)
+                .sum::<f64>() / passing.len() as f64
+        };
+
+        let summary = format!(
+            "Performance report: {}/{} implementations passed. \
+             {} suspected fallbacks. Average speedup (passing): {:.1}%.",
+            passing.len(),
+            comparisons.len(),
+            suspected.len(),
+            avg_speedup
+        );
+
+        Ok(PerformanceReport {
+            comparisons: comparisons.to_vec(),
+            passing_implementations: passing,
+            failing_implementations: failing,
+            suspected_fallbacks: suspected,
+            average_speedup_percentage: avg_speedup,
+            summary,
+        })
+    }
 }
 
 #[cfg(test)]

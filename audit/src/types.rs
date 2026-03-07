@@ -644,3 +644,81 @@ pub struct ContaminationFilterResult {
     pub filtering_time_ns: u64,
     pub recommendations: Vec<String>,
 }
+
+// ─── Task 9: Performance Baseline Comparison Types ────────────────────────────
+
+/// Result of comparing FFI performance against a pure-Python baseline
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceComparisonResult {
+    /// Name of the FFI implementation being evaluated
+    pub implementation: String,
+    /// Measured execution times of the FFI implementation (nanoseconds)
+    pub ffi_results_ns: Vec<f64>,
+    /// Measured execution times of the pure-Python baseline (nanoseconds)
+    pub python_baseline_ns: Vec<f64>,
+    /// python_mean / ffi_mean  — values > 1.0 indicate the FFI is faster
+    pub performance_ratio: f64,
+    /// (python_mean − ffi_mean) / python_mean × 100  (positive = FFI is faster)
+    pub speedup_percentage: f64,
+    /// Result of the Welch's t-test comparing the two samples
+    pub statistical_significance: SignificanceTestResult,
+    /// True when the FFI is statistically significantly faster than Python
+    pub is_significantly_faster: bool,
+    /// True when the performance pattern suggests a Python fallback
+    pub fallback_suspected: bool,
+    /// Flags describing anomalous behaviour
+    pub performance_flags: Vec<PerformanceFlag>,
+    /// Human-readable recommendations
+    pub recommendations: Vec<String>,
+}
+
+/// Result of a Welch's two-sample t-test
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SignificanceTestResult {
+    /// Human-readable name of the test performed
+    pub test_name: String,
+    /// Computed t-statistic (positive = FFI mean < Python mean, i.e., FFI is faster)
+    pub t_statistic: f64,
+    /// Two-sided p-value (approximated via the normal distribution)
+    pub p_value: f64,
+    /// Confidence level used for the significance decision (e.g., 0.95)
+    pub confidence_level: f64,
+    /// True when p_value < (1 − confidence_level)
+    pub is_significant: bool,
+    /// Cohen's d effect size
+    pub effect_size: f64,
+    /// Welch-Satterthwaite degrees of freedom
+    pub degrees_of_freedom: f64,
+}
+
+/// Flags raised when a performance comparison shows anomalous patterns
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum PerformanceFlag {
+    /// Performance ratio is suspiciously close to 1.0 (FFI ≈ Python speed)
+    SuspiciouslySimilarToPython,
+    /// FFI is measurably *slower* than Python (ratio < 1.0)
+    SignificantlySlowerThanPython,
+    /// Pattern strongly suggests the call fell back to Python
+    PotentialFallback,
+    /// High coefficient of variation in FFI results
+    HighVariance,
+    /// Fewer than 3 measurements — unreliable comparison
+    InsufficientData,
+}
+
+/// Aggregate performance report covering multiple FFI implementations
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceReport {
+    /// One comparison entry per FFI implementation
+    pub comparisons: Vec<PerformanceComparisonResult>,
+    /// Implementations confirmed to be significantly faster than Python
+    pub passing_implementations: Vec<String>,
+    /// Implementations that failed the performance check
+    pub failing_implementations: Vec<String>,
+    /// Implementations flagged as potential fallbacks
+    pub suspected_fallbacks: Vec<String>,
+    /// Average speedup across all passing implementations
+    pub average_speedup_percentage: f64,
+    /// Human-readable summary
+    pub summary: String,
+}

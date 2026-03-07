@@ -78,6 +78,45 @@ impl ComprehensiveAuditReporter {
             .map(|r| r.report_text)
             .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
     }
+
+    // ── Task 11.1: Additional Python bindings ─────────────────────────────────
+
+    /// Analyse a list of (name, timing_ns) tuples for fallback patterns.
+    ///
+    /// Returns a dict with:
+    ///   suspected_fallbacks: list[str]
+    ///   clean_implementations: list[str]
+    ///   summary: str
+    pub fn analyze_benchmark_results_py(
+        &self,
+        py: pyo3::Python<'_>,
+        results: Vec<(String, f64)>,
+    ) -> pyo3::PyResult<pyo3::PyObject> {
+        const FALLBACK_THRESHOLD_NS: f64 = 10_000_000.0; // 10 ms
+
+        let mut suspected: Vec<String> = Vec::new();
+        let mut clean: Vec<String> = Vec::new();
+
+        for (name, time_ns) in &results {
+            let name_flag = name.contains("python") || name.contains("fallback") || name.contains("pure");
+            if name_flag || *time_ns >= FALLBACK_THRESHOLD_NS {
+                suspected.push(name.clone());
+            } else {
+                clean.push(name.clone());
+            }
+        }
+
+        let summary = format!(
+            "Analyzed {} implementations: {} suspected fallbacks, {} clean.",
+            results.len(), suspected.len(), clean.len()
+        );
+
+        let d = pyo3::types::PyDict::new(py);
+        d.set_item("suspected_fallbacks", &suspected)?;
+        d.set_item("clean_implementations", &clean)?;
+        d.set_item("summary", &summary)?;
+        Ok(d.into())
+    }
 }
 
 // ── Internal Rust API ─────────────────────────────────────────────────────────

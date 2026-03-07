@@ -79,6 +79,66 @@ impl FallbackPreventionSystem {
         traces.clear();
         Ok(())
     }
+
+    // ── Task 11.1: Python bindings for Task 9 performance comparison ──────────
+
+    /// Compare FFI vs Python baseline. Returns a dict with comparison details.
+    ///
+    /// Keys: implementation, performance_ratio, speedup_percentage,
+    ///       is_significantly_faster, fallback_suspected, p_value, effect_size,
+    ///       t_statistic, degrees_of_freedom, flags, recommendations
+    pub fn compare_with_python_baseline_py(
+        &self,
+        py: Python<'_>,
+        implementation: &str,
+        ffi_results_ns: Vec<f64>,
+        python_baseline_ns: Vec<f64>,
+    ) -> PyResult<PyObject> {
+        let result = self
+            .compare_with_python_baseline(implementation, &ffi_results_ns, &python_baseline_ns)
+            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))?;
+
+        let d = pyo3::types::PyDict::new(py);
+        d.set_item("implementation", &result.implementation)?;
+        d.set_item("performance_ratio", result.performance_ratio)?;
+        d.set_item("speedup_percentage", result.speedup_percentage)?;
+        d.set_item("is_significantly_faster", result.is_significantly_faster)?;
+        d.set_item("fallback_suspected", result.fallback_suspected)?;
+        d.set_item("p_value", result.statistical_significance.p_value)?;
+        d.set_item("t_statistic", result.statistical_significance.t_statistic)?;
+        d.set_item("effect_size", result.statistical_significance.effect_size)?;
+        d.set_item("degrees_of_freedom", result.statistical_significance.degrees_of_freedom)?;
+        let flags: Vec<String> = result.performance_flags.iter().map(|f| format!("{:?}", f)).collect();
+        d.set_item("flags", flags)?;
+        d.set_item("recommendations", result.recommendations)?;
+        Ok(d.into())
+    }
+
+    /// Filter contaminated results. Returns cleaned list of f64 values.
+    pub fn filter_contaminated_results_py(&self, results: Vec<f64>) -> PyResult<Vec<f64>> {
+        self.filter_contaminated_results(&results)
+            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
+    }
+
+    /// Check whether an execution is suspected to be a Python fallback.
+    ///
+    /// Returns True if the implementation name or timing pattern suggests fallback.
+    pub fn is_fallback_suspected_py(&self, implementation: &str, execution_time_ns: f64) -> bool {
+        // Name-based heuristic
+        let name_suggests_fallback = implementation.contains("python")
+            || implementation.contains("fallback")
+            || implementation.contains("pure");
+        // Timing heuristic: > 10 ms is suspicious for a native call
+        let time_suggests_fallback = execution_time_ns >= 10_000_000.0;
+        name_suggests_fallback || time_suggests_fallback
+    }
+
+    /// Detect execution type for an implementation. Returns 0=Native, 1=Python, 2=Mixed, 3=Unknown.
+    pub fn detect_execution_type_py(&self, implementation: &str) -> u8 {
+        self.detect_execution_type(implementation)
+            .map(|t| t.as_u8())
+            .unwrap_or(3)
+    }
 }
 
 impl FallbackPreventionSystem {

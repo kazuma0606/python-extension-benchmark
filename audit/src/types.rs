@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use pyo3::prelude::*;
 
 /// Diagnostics information for a library
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -270,10 +271,270 @@ pub struct CompatibilityLayer {
 }
 
 /// Types of compatibility layers
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum CompatibilityLayerType {
     ABIWrapper,
     CallingConventionAdapter,
     MemoryLayoutAdapter,
     SymbolRedirection,
+    PythonWrapper,
+    SharedLibrary,
+    F2PyWrapper,
+    JNIWrapper,
+}
+
+/// Performance metrics for execution monitoring
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[pyclass]
+pub struct PerformanceMetrics {
+    #[pyo3(get)]
+    pub cpu_time_ns: u64,
+    #[pyo3(get)]
+    pub wall_time_ns: u64,
+    #[pyo3(get)]
+    pub memory_usage_bytes: usize,
+    #[pyo3(get)]
+    pub native_code_percentage: f64,
+    #[pyo3(get)]
+    pub python_overhead_percentage: f64,
+}
+
+#[pymethods]
+impl PerformanceMetrics {
+    #[new]
+    pub fn new(cpu_time_ns: u64, wall_time_ns: u64, memory_usage_bytes: usize, 
+               native_code_percentage: f64, python_overhead_percentage: f64) -> Self {
+        Self {
+            cpu_time_ns,
+            wall_time_ns,
+            memory_usage_bytes,
+            native_code_percentage,
+            python_overhead_percentage,
+        }
+    }
+}
+
+/// Execution path monitoring results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[pyclass]
+pub struct ExecutionPathMonitoring {
+    #[pyo3(get)]
+    pub implementation: String,
+    #[pyo3(get)]
+    pub execution_type: u8, // Changed to u8 for PyO3 compatibility
+    #[pyo3(get)]
+    pub execution_time_ns: u64,
+    #[pyo3(get)]
+    pub call_stack_depth: usize,
+    #[pyo3(get)]
+    pub native_calls_detected: usize,
+    #[pyo3(get)]
+    pub python_calls_detected: usize,
+    #[pyo3(get)]
+    pub fallback_detected: bool,
+    #[pyo3(get)]
+    pub performance_metrics: PerformanceMetrics,
+}
+
+#[pymethods]
+impl ExecutionPathMonitoring {
+    #[new]
+    pub fn new(implementation: String, execution_type: u8, execution_time_ns: u64,
+               call_stack_depth: usize, native_calls_detected: usize, python_calls_detected: usize,
+               fallback_detected: bool, performance_metrics: PerformanceMetrics) -> Self {
+        Self {
+            implementation,
+            execution_type,
+            execution_time_ns,
+            call_stack_depth,
+            native_calls_detected,
+            python_calls_detected,
+            fallback_detected,
+            performance_metrics,
+        }
+    }
+}
+
+/// Types of execution
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum ExecutionType {
+    NativeOnly,
+    PythonOnly,
+    Mixed,
+    Unknown,
+}
+
+impl ExecutionType {
+    pub fn as_u8(&self) -> u8 {
+        match self {
+            ExecutionType::NativeOnly => 0,
+            ExecutionType::PythonOnly => 1,
+            ExecutionType::Mixed => 2,
+            ExecutionType::Unknown => 3,
+        }
+    }
+}
+
+/// Execution trace entry
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionTraceEntry {
+    pub timestamp_ns: u64,
+    pub function_name: String,
+    pub execution_type: ExecutionType,
+    pub duration_ns: u64,
+    pub call_depth: usize,
+}
+
+/// Execution monitoring configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionMonitoringConfig {
+    pub enable_call_tracing: bool,
+    pub enable_performance_monitoring: bool,
+    pub fallback_detection_threshold: f64,
+    pub max_trace_entries: usize,
+    pub sampling_interval_ns: u64,
+}
+
+/// Fallback detection result with detailed diagnostics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FallbackDetectionResult {
+    pub implementation: String,
+    pub fallback_detected: bool,
+    pub detection_timestamp_ns: u64,
+    pub execution_stopped: bool,
+    pub diagnostic_info: FallbackDiagnosticInfo,
+    pub execution_path_monitoring: ExecutionPathMonitoring,
+}
+
+/// Detailed diagnostic information for fallback detection
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FallbackDiagnosticInfo {
+    pub detection_reason: String,
+    pub python_overhead_percentage: f64,
+    pub expected_native_percentage: f64,
+    pub actual_native_percentage: f64,
+    pub performance_anomalies: Vec<String>,
+    pub recommended_actions: Vec<String>,
+    pub execution_context: ExecutionContext,
+}
+
+/// Execution context information
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionContext {
+    pub call_stack: Vec<String>,
+    pub environment_variables: std::collections::HashMap<String, String>,
+    pub library_paths: Vec<String>,
+    pub loaded_libraries: Vec<String>,
+    pub system_info: SystemInfo,
+}
+
+/// System information for diagnostics
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SystemInfo {
+    pub os_version: String,
+    pub architecture: String,
+    pub python_version: String,
+    pub available_memory_mb: usize,
+    pub cpu_cores: usize,
+}
+
+/// Performance anomaly detection result
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceAnomalyResult {
+    pub implementation: String,
+    pub anomalies_detected: bool,
+    pub anomaly_score: f64,
+    pub baseline_performance: PerformanceBaseline,
+    pub current_performance: PerformanceSnapshot,
+    pub detected_anomalies: Vec<PerformanceAnomaly>,
+    pub statistical_analysis: StatisticalAnalysis,
+    pub fallback_suspicion_level: SuspicionLevel,
+}
+
+/// Performance baseline for comparison
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceBaseline {
+    pub implementation_type: String,
+    pub expected_execution_time_ns: f64,
+    pub expected_memory_usage_mb: f64,
+    pub expected_cpu_utilization: f64,
+    pub expected_native_percentage: f64,
+    pub baseline_source: BaselineSource,
+}
+
+/// Current performance snapshot
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceSnapshot {
+    pub execution_time_ns: u64,
+    pub memory_usage_bytes: usize,
+    pub cpu_time_ns: u64,
+    pub native_code_percentage: f64,
+    pub python_overhead_percentage: f64,
+    pub call_count_ratio: f64,
+}
+
+/// Individual performance anomaly
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerformanceAnomaly {
+    pub anomaly_type: AnomalyType,
+    pub severity: AnomalySeverity,
+    pub description: String,
+    pub measured_value: f64,
+    pub expected_value: f64,
+    pub deviation_percentage: f64,
+    pub confidence_level: f64,
+}
+
+/// Types of performance anomalies
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AnomalyType {
+    ExecutionTimeAnomaly,
+    MemoryUsageAnomaly,
+    CpuUtilizationAnomaly,
+    NativeCodePercentageAnomaly,
+    CallPatternAnomaly,
+    ThroughputAnomaly,
+    LatencyAnomaly,
+}
+
+/// Severity levels for anomalies
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum AnomalySeverity {
+    Critical,    // > 500% deviation
+    High,        // 200-500% deviation
+    Medium,      // 100-200% deviation
+    Low,         // 50-100% deviation
+    Negligible,  // < 50% deviation
+}
+
+/// Statistical analysis results
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StatisticalAnalysis {
+    pub sample_size: usize,
+    pub mean_execution_time: f64,
+    pub standard_deviation: f64,
+    pub confidence_interval_95: (f64, f64),
+    pub z_score: f64,
+    pub p_value: f64,
+    pub is_statistically_significant: bool,
+}
+
+/// Suspicion level for fallback
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SuspicionLevel {
+    None,        // 0-20% suspicion
+    Low,         // 20-40% suspicion
+    Medium,      // 40-60% suspicion
+    High,        // 60-80% suspicion
+    Critical,    // 80-100% suspicion
+}
+
+/// Source of performance baseline
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum BaselineSource {
+    HistoricalData,
+    TheoreticalModel,
+    BenchmarkSuite,
+    UserProvided,
+    DefaultEstimate,
 }

@@ -1,7 +1,6 @@
 //! Error types for the FFI audit system
 
 use thiserror::Error;
-use std::fmt;
 
 /// Main error type for the FFI audit system
 #[derive(Error, Debug, Clone)]

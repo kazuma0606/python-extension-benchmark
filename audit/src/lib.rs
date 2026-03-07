@@ -26,5 +26,7 @@ fn windows_ffi_audit(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<fixer::FFIImplementationFixer>()?;
     m.add_class::<fallback_prevention::FallbackPreventionSystem>()?;
     m.add_class::<reporter::ComprehensiveAuditReporter>()?;
+    m.add_class::<types::ExecutionPathMonitoring>()?;
+    m.add_class::<types::PerformanceMetrics>()?;
     Ok(())
 }

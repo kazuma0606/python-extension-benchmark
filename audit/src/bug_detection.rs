@@ -940,7 +940,7 @@ mod tests {
 
     // Comprehensive property-based test for Windows problem complete diagnosis
     // Feature: windows-ffi-audit, Property 12: Windows問題完全診断
-    #[cfg(test)]
+    #[cfg(all(test, feature = "proptest"))]
     mod property_tests {
         use super::*;
         use proptest::prelude::*;

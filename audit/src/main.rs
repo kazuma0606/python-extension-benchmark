@@ -8,6 +8,7 @@ use windows_ffi_audit::{Result, FFIAuditError};
 use windows_ffi_audit::diagnostics::FFIImplementationDebugger;
 use windows_ffi_audit::bug_detection::BugDetectionEngine;
 use windows_ffi_audit::fixer::FFIImplementationFixer;
+use windows_ffi_audit::minimal_test_framework::MinimalTestFramework;
 
 fn main() {
     if let Err(e) = run() {
@@ -50,6 +51,15 @@ fn run() -> Result<()> {
         "verify" => {
             println!("Verifying all FFI implementations...");
             run_verification()
+        }
+        "test" => {
+            if args.len() < 3 {
+                return Err(FFIAuditError::InvalidArguments(
+                    "test command requires implementation name".to_string()
+                ));
+            }
+            println!("Running minimal tests for: {}", args[2]);
+            run_minimal_tests(&args[2])
         }
         "--help" | "-h" => {
             print_usage();
@@ -285,6 +295,74 @@ fn run_verification() -> Result<()> {
     Ok(())
 }
 
+/// Run minimal tests for a specific FFI implementation
+fn run_minimal_tests(impl_name: &str) -> Result<()> {
+    let mut test_framework = MinimalTestFramework::new();
+    
+    println!("Running minimal tests for implementation: {}", impl_name);
+    
+    match test_framework.run_all_tests(impl_name) {
+        Ok(results) => {
+            println!("\n=== Test Results for {} ===", impl_name);
+            println!("Overall Success: {}", results.overall_success);
+            println!("Execution Time: {}ms", results.execution_time_ms);
+            
+            // Numeric test results
+            println!("\nNumeric Tests:");
+            println!("  Passed: {}", results.numeric_test_result.test_passed);
+            println!("  Operations: {}", results.numeric_test_result.operations_completed);
+            println!("  Performance Ratio: {:.2}x", results.numeric_test_result.performance_ratio);
+            if !results.numeric_test_result.accuracy_errors.is_empty() {
+                println!("  Accuracy Errors: {}", results.numeric_test_result.accuracy_errors.len());
+                for error in &results.numeric_test_result.accuracy_errors {
+                    println!("    - {}: expected {}, got {} (error: {:.2e})", 
+                            error.operation, error.expected, error.actual, error.relative_error);
+                }
+            }
+            
+            // Memory test results
+            println!("\nMemory Tests:");
+            println!("  Passed: {}", results.memory_test_result.test_passed);
+            println!("  Bytes Processed: {}", results.memory_test_result.bytes_processed);
+            println!("  Performance Ratio: {:.2}x", results.memory_test_result.performance_ratio);
+            if !results.memory_test_result.memory_errors.is_empty() {
+                println!("  Memory Errors: {}", results.memory_test_result.memory_errors.len());
+                for error in &results.memory_test_result.memory_errors {
+                    println!("    - {}: {:?} - {}", 
+                            error.operation, error.error_type, error.description);
+                }
+            }
+            
+            // Parallel test results
+            println!("\nParallel Tests:");
+            println!("  Passed: {}", results.parallel_test_result.test_passed);
+            println!("  Threads Used: {}", results.parallel_test_result.threads_used);
+            println!("  Operations: {}", results.parallel_test_result.operations_completed);
+            println!("  Efficiency: {:.2}%", results.parallel_test_result.parallelization_efficiency * 100.0);
+            println!("  Performance Ratio: {:.2}x", results.parallel_test_result.performance_ratio);
+            
+            // Performance metrics
+            println!("\nPerformance Metrics:");
+            println!("  Native Code: {:.1}%", results.performance_metrics.native_code_percentage);
+            println!("  Python Overhead: {:.1}%", results.performance_metrics.python_overhead_percentage);
+            println!("  Memory Usage: {} bytes", results.performance_metrics.memory_usage_bytes);
+            
+            if results.overall_success {
+                println!("\n✓ All tests passed for {}", impl_name);
+            } else {
+                println!("\n✗ Some tests failed for {}", impl_name);
+                println!("Run 'ffi-audit diagnose {}' for detailed diagnostics", impl_name);
+            }
+        }
+        Err(e) => {
+            println!("✗ Test execution failed: {}", e);
+            return Err(e);
+        }
+    }
+    
+    Ok(())
+}
+
 fn print_usage() {
     println!("FFI Audit Tool");
     println!("Usage: ffi-audit <command> [options]");
@@ -293,6 +371,7 @@ fn print_usage() {
     println!("  audit                    - Run comprehensive FFI audit");
     println!("  diagnose <implementation> - Diagnose specific FFI implementation");
     println!("  fix <implementation>     - Fix issues in FFI implementation");
+    println!("  test <implementation>    - Run minimal tests for FFI implementation");
     println!("  verify                   - Verify all FFI implementations");
     println!("  --help, -h              - Show this help message");
 }

@@ -65,6 +65,9 @@ pub enum AuditError {
     #[error("Python integration error: {0}")]
     PythonIntegrationError(String),
     
+    #[error("Test execution error: {0}")]
+    TestExecutionError(String),
+    
     #[error("Unknown error: {0}")]
     Unknown(String),
 }

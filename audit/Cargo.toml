@@ -43,6 +43,7 @@ winapi = { version = "0.3", features = [
 ] }
 
 [dev-dependencies]
+proptest = "1.4"
 
 [features]
 default = []

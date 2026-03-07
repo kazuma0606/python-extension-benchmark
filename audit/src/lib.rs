@@ -10,6 +10,7 @@ pub mod bug_detection;
 pub mod fixer;
 pub mod fallback_prevention;
 pub mod reporter;
+pub mod minimal_test_framework;
 
 // Re-export main types
 pub use error::{FFIAuditError, Result};
@@ -28,5 +29,6 @@ fn windows_ffi_audit(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<reporter::ComprehensiveAuditReporter>()?;
     m.add_class::<types::ExecutionPathMonitoring>()?;
     m.add_class::<types::PerformanceMetrics>()?;
+    m.add_class::<minimal_test_framework::MinimalTestFramework>()?;
     Ok(())
 }
